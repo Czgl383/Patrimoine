@@ -42,6 +42,19 @@ nav.tabs button.active{color:var(--text);border-bottom-color:var(--gold);}
 .more-row{display:block;width:100%;text-align:left;background:var(--panel-2);border:1px solid var(--line);color:var(--text);padding:13px 14px;border-radius:6px;font-size:14px;cursor:pointer;font-family:'Inter',sans-serif;}
 .more-row:active{background:var(--ink);}
 .mobile-summary{display:none;}
+.dashboard-cards{display:none;}
+.support-card{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:10px;}
+.support-card.nested{margin-left:16px;background:var(--ink);}
+.support-card.group{border-color:var(--gold);}
+.sc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+.sc-name{font-weight:600;font-size:14px;color:var(--text);}
+.sc-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;}
+.sc-value{font-family:'IBM Plex Mono',monospace;font-size:15px;text-align:right;white-space:nowrap;}
+.sc-perf{display:flex;gap:24px;margin-top:11px;padding-top:11px;border-top:1px solid var(--line);}
+.sc-perf-item{display:flex;flex-direction:column;gap:3px;}
+.sc-perf-item .perf-link, .sc-perf-item .pill{font-size:14px;}
+.sc-control{margin-top:9px;font-size:11px;color:var(--text-dim);}
+.sc-label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);}
 main{padding:28px 32px 80px;max-width:1180px;margin:0 auto;}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:20px 22px;margin-bottom:20px;}
@@ -93,6 +106,8 @@ button.btn-edit{background:none;border:none;color:var(--gold);font-size:12px;mar
   .bottom-tab-btn .bt-label{font-size:10px;font-weight:500;}
   .bottom-tab-btn.active{color:var(--gold);}
   .mobile-summary{display:block !important;margin-top:4px;}
+  .dashboard-table{display:none;}
+  .dashboard-cards{display:block;}
   main{padding:16px 12px calc(84px + env(safe-area-inset-bottom));}
   .grid2{grid-template-columns:1fr;gap:14px;}
   .card{padding:14px 14px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
@@ -1064,8 +1079,56 @@ function viewDashboard(){
       <td class="label-cell" style="font-size:11px">${controlCell}</td>
     </tr>`;
   }
+  function supportCard(s, indent){
+    const val = displayValue(s.id, untilDate);
+    const xAnnuel = supportXIRR(s.id, sinceDate, untilDate);
+    const xGlobal = supportXIRR(s.id, null, null);
+    const tauxAn = s.tauxAnnonces ? s.tauxAnnonces[dashboardYear] : null;
+    let controlLine = '';
+    if(tauxAn!==undefined && tauxAn!==null){
+      const base = latestValorisation(s.id, sinceDate);
+      const rendementPercu = base && base.value ? interestReceived(s.id, dashboardYear)/base.value : null;
+      controlLine = `<div class="sc-control"><span class="sc-label">Contrôle SCPI</span> ${fmtPct(rendementPercu)} perçu / ${tauxAn}% annoncé</div>`;
+    }
+    const perfAnnuelHTML = xAnnuel===null ? '<span class="pill">pas assez de données</span>' : `<button class="perf-link" data-ids="${s.id}" data-since="${sinceDate}" data-until="${untilDate||''}" data-title="Performance ${dashboardYear}">${fmtPct(xAnnuel)}</button>`;
+    const perfGlobalHTML = xGlobal===null ? '<span class="pill">pas assez de données</span>' : `<button class="perf-link" data-ids="${s.id}" data-since="" data-until="" data-title="Performance globale">${fmtPct(xGlobal)}</button>`;
+    return `
+    <div class="support-card${indent?' nested':''}">
+      <div class="sc-top">
+        <div>
+          <div class="sc-name">${s.nom}</div>
+          <div class="sc-tags"><span class="pill">${s.type}</span><span class="pill">${s.disponibilite}</span>${s.dateDisponibilite?`<span class="pill">dispo. ${fmtDate(s.dateDisponibilite)}</span>`:''}</div>
+        </div>
+        <div class="sc-value">${val?fmtEUR(val.value):'—'}${val&&val.estimated?'<span class="pill">estimé</span>':''}${val&&val.fromActions?'<span class="pill">actions</span>':''}</div>
+      </div>
+      <div class="sc-perf">
+        <div class="sc-perf-item"><span class="sc-label">Perf. ${dashboardYear}</span>${perfAnnuelHTML}</div>
+        <div class="sc-perf-item"><span class="sc-label">Perf. globale</span>${perfGlobalHTML}</div>
+      </div>
+      ${controlLine}
+    </div>`;
+  }
+  function groupCard(t, ids){
+    const val = ids.reduce((sum,id)=>{ const v=displayValue(id, untilDate); return sum+(v?v.value:0); },0);
+    const gAnnuel = groupXIRRDetail(ids, sinceDate, untilDate);
+    const gGlobal = groupXIRRDetail(ids, null, null);
+    return `
+    <div class="support-card group">
+      <div class="sc-top">
+        <div>
+          <div class="sc-name">${t}</div>
+          <div class="sc-tags"><span class="pill">${ids.length} support${ids.length>1?'s':''}</span></div>
+        </div>
+        <div class="sc-value">${fmtEUR(val)}</div>
+      </div>
+      <div class="sc-perf">
+        <div class="sc-perf-item"><span class="sc-label">Perf. ${dashboardYear}</span>${gAnnuel.rate===null?'<span class="pill">pas assez de données</span>':`<button class="perf-link" data-ids="${ids.join(',')}" data-since="${sinceDate}" data-until="${untilDate||''}" data-title="Performance ${dashboardYear} — ${t}">${fmtPct(gAnnuel.rate)}</button>`}</div>
+        <div class="sc-perf-item"><span class="sc-label">Perf. globale</span>${gGlobal.rate===null?'<span class="pill">pas assez de données</span>':`<button class="perf-link" data-ids="${ids.join(',')}" data-since="" data-until="" data-title="Performance globale — ${t}">${fmtPct(gGlobal.rate)}</button>`}</div>
+      </div>
+    </div>`;
+  }
 
-  let tableBody;
+  let tableBody, cardList;
   if(dashboardGroupByType){
     const typesPresent = Array.from(new Set(state.supports.map(s=>s.type)));
     tableBody = typesPresent.map(t=>{
@@ -1085,8 +1148,14 @@ function viewDashboard(){
       const detailRows = dashboardShowDetail ? state.supports.filter(s=>s.type===t).map(s=>supportRow(s).replace('<td class="label-cell">', '<td class="label-cell" style="padding-left:26px;color:var(--text-dim)">')).join('') : '';
       return groupRow + detailRows;
     }).join('');
+    cardList = typesPresent.map(t=>{
+      const ids = state.supports.filter(s=>s.type===t).map(s=>s.id);
+      const details = dashboardShowDetail ? state.supports.filter(s=>s.type===t).map(s=>supportCard(s,true)).join('') : '';
+      return groupCard(t, ids) + details;
+    }).join('');
   } else {
     tableBody = state.supports.map(supportRow).join('');
+    cardList = state.supports.map(s=>supportCard(s,false)).join('');
   }
 
   const byType = {}, byDispo = {};
@@ -1133,8 +1202,9 @@ function viewDashboard(){
       <div class="field"><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);text-transform:none;letter-spacing:0"><input type="checkbox" id="groupByTypeChk" ${dashboardGroupByType?'checked':''}> Regrouper par type</label></div>
       ${dashboardGroupByType? `<div class="field"><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);text-transform:none;letter-spacing:0"><input type="checkbox" id="groupDetailChk" ${dashboardShowDetail?'checked':''}> Avec détail</label></div>`:''}
     </div>
-    <table><thead><tr><th>Support</th><th>Type</th><th>Disponibilité</th><th>Valeur</th><th>Perf. ${dashboardYear}</th><th>Perf. globale</th><th>Contrôle SCPI</th></tr></thead>
+    <table class="dashboard-table"><thead><tr><th>Support</th><th>Type</th><th>Disponibilité</th><th>Valeur</th><th>Perf. ${dashboardYear}</th><th>Perf. globale</th><th>Contrôle SCPI</th></tr></thead>
     <tbody>${tableBody}</tbody></table>
+    <div class="dashboard-cards">${cardList}</div>
   </div>
   ${empCard}`;
 }
@@ -1168,7 +1238,7 @@ function viewSupports(){
       <div class="field"><label>Type</label><select name="type">${state.types.map(t=>`<option ${e&&e.type===t?'selected':''}>${t}</option>`).join('')}</select></div>
       <div class="field"><label>Disponibilité</label><select name="disponibilite">${DISPOS.map(t=>`<option ${e&&e.disponibilite===t?'selected':''}>${t}</option>`).join('')}</select></div>
       <div class="field"><label>Date de disponibilité (si différée, ex. PER, PEE)</label>${dateInputHTML('dateDisponibilite', e&&e.dateDisponibilite?e.dateDisponibilite:null, false)}</div>
-      <div class="field"><label>Délai jouissance (mois, SCPI)</label><input name="delaiJouissance" type="number" min="0" value="${e?(e.delaiJouissance||0):0}"></div>
+      <div class="field"><label>Délai jouissance (mois, SCPI)</label><input name="delaiJouissance" type="number" inputmode="numeric" min="0" value="${e?(e.delaiJouissance||0):0}"></div>
       <button class="btn" type="submit">${e?'Enregistrer':'Ajouter'}</button>
       ${e?'<button class="btn secondary" type="button" id="cancelEditSupport">Annuler</button>':''}
     </form>
@@ -1192,8 +1262,8 @@ function viewSupports(){
     <div class="sub">Optionnel, et propre à chaque année (utile pour les SCPI notamment) — sert de contrôle dans la vue d'ensemble, sans impact sur le calcul de performance.</div>
     <form class="inline-form" id="formTaux">
       <div class="field"><label>Support</label><select name="supportId">${supOptsForTaux()}</select></div>
-      <div class="field"><label>Année</label><input name="annee" type="number" value="${new Date().getFullYear()}"></div>
-      <div class="field"><label>Taux annoncé (%)</label><input name="taux" type="number" step="0.01" required></div>
+      <div class="field"><label>Année</label><input name="annee" type="number" inputmode="numeric" value="${new Date().getFullYear()}"></div>
+      <div class="field"><label>Taux annoncé (%)</label><input name="taux" type="number" inputmode="decimal" step="0.01" required></div>
       <button class="btn" type="submit">Ajouter</button>
     </form>
     ${tauxRows.length? `<table><thead><tr><th>Support</th><th>Année</th><th>Taux</th><th></th></tr></thead><tbody>${tauxRows.join('')}</tbody></table>` : '<div class="empty">Aucun taux annoncé renseigné.</div>'}
@@ -1230,10 +1300,10 @@ function viewMouvements(){
         <option value="interet" ${defaultType==='interet'?'selected':''}>Intérêts perçus</option>
       </select></div>
       <div class="field"><label>Date (JJ/MM/AAAA)</label>${dateInputHTML('date', e?e.date:null, true)}</div>
-      <div class="field"><label>Montant (€)</label><input name="montant" type="number" step="0.01" min="0" required value="${e?Math.abs(e.montant):''}"></div>
-      <div class="field" id="rattachementField" style="${defaultType==='interet'?'':'display:none'}"><label>Année de rattachement</label><input name="anneeRattachement" type="number" value="${e&&e.anneeRattachement?e.anneeRattachement:new Date().getFullYear()}"></div>
-      <div class="field"><label>Dont frais (€)</label><input name="fraisMontant" type="number" step="0.01" value="${e?(e.fraisMontant||''):''}"></div>
-      <div class="field"><label>Dont frais (%)</label><input name="fraisPourcent" type="number" step="0.01" value="${e?(e.fraisPourcent||''):''}"></div>
+      <div class="field"><label>Montant (€)</label><input name="montant" type="number" inputmode="decimal" step="0.01" min="0" required value="${e?Math.abs(e.montant):''}"></div>
+      <div class="field" id="rattachementField" style="${defaultType==='interet'?'':'display:none'}"><label>Année de rattachement</label><input name="anneeRattachement" type="number" inputmode="numeric" value="${e&&e.anneeRattachement?e.anneeRattachement:new Date().getFullYear()}"></div>
+      <div class="field"><label>Dont frais (€)</label><input name="fraisMontant" type="number" inputmode="decimal" step="0.01" value="${e?(e.fraisMontant||''):''}"></div>
+      <div class="field"><label>Dont frais (%)</label><input name="fraisPourcent" type="number" inputmode="decimal" step="0.01" value="${e?(e.fraisPourcent||''):''}"></div>
       <button class="btn" type="submit">${e?'Enregistrer':'Ajouter'}</button>
       ${e?'<button class="btn secondary" type="button" id="cancelEditMouvement">Annuler</button>':''}
     </form>
@@ -1280,10 +1350,10 @@ function viewActions(){
       <div class="field"><label>Support (PEA / CTO…)</label><select name="supportId">${supOpts(e?e.supportId:null)}</select></div>
       <div class="field"><label>Nom</label><input name="nom" required value="${e?e.nom:''}"></div>
       <div class="field"><label>Ticker (optionnel)</label><input name="ticker" value="${e&&e.ticker?e.ticker:''}"></div>
-      <div class="field"><label>Quantité</label><input name="quantite" type="number" step="0.0001" required value="${e?e.quantite:''}"></div>
-      <div class="field"><label>Prix de revient moyen (€)</label><input name="pru" type="number" step="0.01" required value="${e?e.pru:''}"></div>
-      <div class="field"><label>Cours actuel (€)</label><input name="coursActuel" type="number" step="0.01" required value="${e?e.coursActuel:''}"></div>
-      <div class="field"><label>Cours cible / objectif (€, optionnel)</label><input name="coursCible" type="number" step="0.01" value="${e&&e.coursCible?e.coursCible:''}"></div>
+      <div class="field"><label>Quantité</label><input name="quantite" type="number" inputmode="decimal" step="0.0001" required value="${e?e.quantite:''}"></div>
+      <div class="field"><label>Prix de revient moyen (€)</label><input name="pru" type="number" inputmode="decimal" step="0.01" required value="${e?e.pru:''}"></div>
+      <div class="field"><label>Cours actuel (€)</label><input name="coursActuel" type="number" inputmode="decimal" step="0.01" required value="${e?e.coursActuel:''}"></div>
+      <div class="field"><label>Cours cible / objectif (€, optionnel)</label><input name="coursCible" type="number" inputmode="decimal" step="0.01" value="${e&&e.coursCible?e.coursCible:''}"></div>
       <button class="btn" type="submit">${e?'Enregistrer':'Ajouter'}</button>
       ${e?'<button class="btn secondary" type="button" id="cancelEditAction">Annuler</button>':''}
     </form>
@@ -1310,7 +1380,7 @@ function viewValorisations(){
     <form class="inline-form" id="formValo">
       <div class="field"><label>Support</label><select name="supportId">${supOpts(e)}</select></div>
       <div class="field"><label>Date</label>${dateInputHTML('date', e?e.date:null, true)}</div>
-      <div class="field"><label>Valeur (€)</label><input name="value" type="number" step="0.01" required value="${e?e.value:''}"></div>
+      <div class="field"><label>Valeur (€)</label><input name="value" type="number" inputmode="decimal" step="0.01" required value="${e?e.value:''}"></div>
       <button class="btn" type="submit">${e?'Enregistrer':'Ajouter'}</button>
       ${e?'<button class="btn secondary" type="button" id="cancelEditValo">Annuler</button>':''}
     </form>
@@ -1351,13 +1421,13 @@ function viewEmprunts(){
     <h3>${ed?"Modifier l'emprunt":'Ajouter un emprunt'}</h3>
     <form class="inline-form" id="formEmprunt">
       <div class="field"><label>Nom</label><input name="nom" required value="${ed?ed.nom:''}"></div>
-      <div class="field"><label>Capital emprunté (€)</label><input name="capital" type="number" step="0.01" required value="${ed?ed.capital:''}"></div>
-      <div class="field"><label>Taux annuel (%)</label><input name="taux" type="number" step="0.01" required value="${ed?ed.taux:''}"></div>
-      <div class="field"><label>Durée (mois)</label><input name="duree" type="number" required value="${ed?ed.duree:''}"></div>
+      <div class="field"><label>Capital emprunté (€)</label><input name="capital" type="number" inputmode="decimal" step="0.01" required value="${ed?ed.capital:''}"></div>
+      <div class="field"><label>Taux annuel (%)</label><input name="taux" type="number" inputmode="decimal" step="0.01" required value="${ed?ed.taux:''}"></div>
+      <div class="field"><label>Durée (mois)</label><input name="duree" type="number" inputmode="numeric" required value="${ed?ed.duree:''}"></div>
       <div class="field"><label>Date de départ</label>${dateInputHTML('dateDebut', ed?ed.dateDebut:null, true)}</div>
       <div class="field"><label>Amortissement</label><select name="type"><option value="constant" ${ed&&ed.type==='constant'?'selected':''}>Mensualités constantes</option><option value="infine" ${ed&&ed.type==='infine'?'selected':''}>In fine</option></select></div>
       <div class="field"><label>Assurance</label><select name="assuranceType"><option value="pourcentage" ${ed&&ed.assuranceType==='pourcentage'?'selected':''}>% annuel du capital initial</option><option value="montant" ${ed&&ed.assuranceType==='montant'?'selected':''}>Montant fixe mensuel</option></select></div>
-      <div class="field"><label>Valeur assurance</label><input name="assuranceValeur" type="number" step="0.001" value="${ed&&ed.assuranceValeur?ed.assuranceValeur:''}"></div>
+      <div class="field"><label>Valeur assurance</label><input name="assuranceValeur" type="number" inputmode="decimal" step="0.001" value="${ed&&ed.assuranceValeur?ed.assuranceValeur:''}"></div>
       <button class="btn" type="submit">${ed?'Enregistrer':'Ajouter'}</button>
       ${ed?'<button class="btn secondary" type="button" id="cancelEditEmprunt">Annuler</button>':''}
     </form>
@@ -1373,7 +1443,7 @@ function viewEmprunts(){
     <form class="inline-form" id="formPrepay">
       <div class="field"><label>Emprunt</label><select name="empruntId">${empOpts()}</select></div>
       <div class="field"><label>Date</label>${dateInputHTML('date', null, true)}</div>
-      <div class="field"><label>Montant (€)</label><input name="montant" type="number" step="0.01" required></div>
+      <div class="field"><label>Montant (€)</label><input name="montant" type="number" inputmode="decimal" step="0.01" required></div>
       <div class="field"><label>Effet</label><select name="mode"><option value="duree">Réduire la durée</option><option value="mensualite">Réduire la mensualité</option></select></div>
       <button class="btn" type="submit">Ajouter</button>
     </form>
@@ -1386,7 +1456,7 @@ function viewProjections(){
   if(state.supports.length===0 && state.emprunts.length===0) return `<div class="card"><div class="empty">Ajoute des supports et/ou emprunts pour lancer une projection.</div></div>`;
   const hypRows = state.supports.map(s=>`<tr>
     <td class="label-cell">${s.nom}</td>
-    <td><input data-hyp="${s.id}" type="number" step="0.1" style="width:80px" value="${state.projection.hypotheses[s.id]!==undefined?state.projection.hypotheses[s.id]:3}"> %/an</td>
+    <td><input data-hyp="${s.id}" type="number" inputmode="decimal" step="0.1" style="width:80px" value="${state.projection.hypotheses[s.id]!==undefined?state.projection.hypotheses[s.id]:3}"> %/an</td>
   </tr>`).join('');
   const supOpts = ()=>state.supports.map(sp=>`<option value="${sp.id}">${sp.nom}</option>`).join('');
   const empOpts = ()=>state.emprunts.map(e=>`<option value="${e.id}">${e.nom}</option>`).join('');
@@ -1407,7 +1477,7 @@ function viewProjections(){
     <h3>Hypothèses de rendement</h3>
     <div class="sub">Rendement annuel moyen supposé par support</div>
     ${state.supports.length? `<table><thead><tr><th>Support</th><th>Rendement</th></tr></thead><tbody>${hypRows}</tbody></table>`:'<div class="empty">Aucun support.</div>'}
-    <div style="margin-top:14px" class="field"><label>Horizon de projection (années)</label><input id="horizonInput" type="number" min="1" max="40" value="${state.projection.horizonAnnees}" style="width:80px"></div>
+    <div style="margin-top:14px" class="field"><label>Horizon de projection (années)</label><input id="horizonInput" type="number" inputmode="numeric" min="1" max="40" value="${state.projection.horizonAnnees}" style="width:80px"></div>
   </div>
   <div class="card">
     <h3>Versements récurrents</h3>
@@ -1415,7 +1485,7 @@ function viewProjections(){
     ${state.supports.length? `
     <form class="inline-form" id="formVR">
       <div class="field"><label>Support</label><select name="supportId">${supOpts()}</select></div>
-      <div class="field"><label>Montant mensuel (€)</label><input name="montant" type="number" step="1" required></div>
+      <div class="field"><label>Montant mensuel (€)</label><input name="montant" type="number" inputmode="numeric" step="1" required></div>
       <div class="field"><label>Fin (optionnel)</label>${dateInputHTML('dateFin', null, false)}</div>
       <div class="field"><label>Scénario</label><select name="scenario"><option value="both">Toujours actif</option><option value="arbitrage">Arbitrage seulement</option></select></div>
       <button class="btn" type="submit">Ajouter</button>
@@ -1429,7 +1499,7 @@ function viewProjections(){
     <form class="inline-form" id="formRS">
       <div class="field"><label>Emprunt</label><select name="empruntId">${empOpts()}</select></div>
       <div class="field"><label>Date</label>${dateInputHTML('date', null, true)}</div>
-      <div class="field"><label>Montant (€)</label><input name="montant" type="number" step="1" required></div>
+      <div class="field"><label>Montant (€)</label><input name="montant" type="number" inputmode="numeric" step="1" required></div>
       <div class="field"><label>Scénario</label><select name="scenario"><option value="arbitrage">Arbitrage seulement</option><option value="both">Toujours actif</option></select></div>
       <button class="btn" type="submit">Ajouter</button>
     </form>`: '<div class="empty">Aucun emprunt enregistré.</div>'}
