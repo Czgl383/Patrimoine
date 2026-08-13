@@ -37,6 +37,10 @@ header.top .brand{font-family:'Fraunces',serif;font-size:15px;letter-spacing:.14
 nav.tabs{display:flex;gap:2px;padding:0 32px;border-bottom:1px solid var(--line);background:var(--panel);overflow-x:auto;}
 nav.tabs button{background:none;border:none;color:var(--text-dim);font-family:'Inter',sans-serif;font-size:13px;font-weight:500;padding:14px 16px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;}
 nav.tabs button.active{color:var(--text);border-bottom-color:var(--gold);}
+.bottom-tabs{display:none;}
+.mobile-only-btn{display:none;background:none;border:1px solid var(--line);color:var(--text);border-radius:6px;width:34px;height:34px;font-size:18px;cursor:pointer;line-height:1;}
+.more-row{display:block;width:100%;text-align:left;background:var(--panel-2);border:1px solid var(--line);color:var(--text);padding:13px 14px;border-radius:6px;font-size:14px;cursor:pointer;font-family:'Inter',sans-serif;}
+.more-row:active{background:var(--ink);}
 main{padding:28px 32px 80px;max-width:1180px;margin:0 auto;}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:20px 22px;margin-bottom:20px;}
@@ -76,14 +80,21 @@ button.btn-edit{background:none;border:none;color:var(--gold);font-size:12px;mar
 .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;}
 
 @media (max-width: 720px){
-  header.top{padding:16px 14px 12px;}
-  header.top .brand{font-size:12px;}
-  .ledger-row{gap:18px;row-gap:10px;}
-  .ledger-item .value{font-size:20px;}
-  .ledger-item.net .value{font-size:24px;}
-  nav.tabs{padding:0 10px;}
-  nav.tabs button{padding:11px 10px;font-size:12px;}
-  main{padding:16px 12px 60px;}
+  header.top{padding:14px 14px 10px;}
+  header.top .brand{font-size:13px;}
+  .brand-row{margin-bottom:10px;}
+  .header-actions{display:none;}
+  .mobile-only-btn{display:inline-flex;align-items:center;justify-content:center;}
+  .ledger-row{gap:18px;row-gap:8px;}
+  .ledger-item .value{font-size:19px;}
+  .ledger-item.net .value{font-size:23px;}
+  nav.tabs{display:none;}
+  .bottom-tabs{display:flex;position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);z-index:40;padding:4px 2px calc(4px + env(safe-area-inset-bottom));}
+  .bottom-tab-btn{flex:1;background:none;border:none;color:var(--text-dim);display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px;font-family:'Inter',sans-serif;cursor:pointer;}
+  .bottom-tab-btn .bt-icon{font-size:19px;line-height:1;}
+  .bottom-tab-btn .bt-label{font-size:10px;font-weight:500;}
+  .bottom-tab-btn.active{color:var(--gold);}
+  main{padding:14px 12px calc(84px + env(safe-area-inset-bottom));}
   .grid2{grid-template-columns:1fr;gap:14px;}
   .card{padding:14px 14px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
   .card table{min-width:600px;}
@@ -95,9 +106,11 @@ button.btn-edit{background:none;border:none;color:var(--gold);font-size:12px;mar
   th,td{padding:7px 6px;}
   .charts-row{flex-direction:column;}
   .chart-box{min-width:0;}
-  #modalContent{padding:16px;width:94%;}
+  #modalOverlay{align-items:flex-end;}
+  #modalContent{padding:18px 16px calc(18px + env(safe-area-inset-bottom));width:100%;max-width:100%;border-radius:16px 16px 0 0;max-height:82vh;}
 }
 </style>
+
 </head>
 <body>
 
@@ -106,11 +119,13 @@ button.btn-edit{background:none;border:none;color:var(--gold);font-size:12px;mar
 <header class="top">
   <div class="brand-row">
     <div class="brand">Grand Livre <span id="saveStatus" class="save-status"></span></div>
+    <button type="button" id="headerMenuBtn" class="mobile-only-btn">⋯</button>
     <span class="header-actions">
       <span id="dossierLabel" class="save-status" style="margin-right:6px"></span>
       <span id="driveStatus" class="save-status" style="margin-right:6px"></span>
       <button type="button" id="driveConnectBtn" class="btn secondary">Connecter Google Drive</button>
       <button type="button" id="dossierSettingsBtn" class="btn secondary">Sécurité</button>
+      <button type="button" id="lockAppBtn" class="btn secondary">Verrouiller</button>
       <button type="button" id="switchDossierBtn" class="btn secondary">Changer de dossier</button>
       <button type="button" id="exportBtn" class="btn secondary">Exporter</button>
       <button type="button" id="importBtn" class="btn secondary">Importer</button>
@@ -125,17 +140,25 @@ button.btn-edit{background:none;border:none;color:var(--gold);font-size:12px;mar
 </header>
 
 <nav class="tabs" id="tabs">
-  <button data-tab="dashboard" class="active">Vue d'ensemble</button>
-  <button data-tab="supports">Supports</button>
-  <button data-tab="mouvements">Mouvements</button>
-  <button data-tab="actions">Actions</button>
-  <button data-tab="valorisations">Valorisations</button>
-  <button data-tab="emprunts">Emprunts</button>
-  <button data-tab="projections">Projections</button>
-  <button data-tab="offres">Offres</button>
+  <button class="tab-btn" data-tab="dashboard">Vue d'ensemble</button>
+  <button class="tab-btn" data-tab="supports">Supports</button>
+  <button class="tab-btn" data-tab="mouvements">Mouvements</button>
+  <button class="tab-btn" data-tab="actions">Actions</button>
+  <button class="tab-btn" data-tab="valorisations">Valorisations</button>
+  <button class="tab-btn" data-tab="emprunts">Emprunts</button>
+  <button class="tab-btn" data-tab="projections">Projections</button>
+  <button class="tab-btn" data-tab="offres">Offres</button>
 </nav>
 
 <main id="main"></main>
+
+<nav class="bottom-tabs" id="bottomTabs">
+  <button class="tab-btn bottom-tab-btn" data-tab="dashboard"><span class="bt-icon">🏠</span><span class="bt-label">Accueil</span></button>
+  <button class="tab-btn bottom-tab-btn" data-tab="mouvements"><span class="bt-icon">💶</span><span class="bt-label">Mvts</span></button>
+  <button class="tab-btn bottom-tab-btn" data-tab="actions"><span class="bt-icon">📈</span><span class="bt-label">Actions</span></button>
+  <button class="tab-btn bottom-tab-btn" data-tab="supports"><span class="bt-icon">🗂️</span><span class="bt-label">Supports</span></button>
+  <button type="button" class="bottom-tab-btn" id="moreTabBtn"><span class="bt-icon">⋯</span><span class="bt-label">Plus</span></button>
+</nav>
 
 <div id="modalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;align-items:center;justify-content:center;">
   <div id="modalContent" style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:24px;max-width:560px;width:90%;max-height:80vh;overflow:auto;"></div>
@@ -194,7 +217,8 @@ async function decryptJSON(blob, key){
 // ---------- DOSSIERS ----------
 let dossierIndex = [];
 let currentDossierId = null;
-let currentDossierKey = null; // CryptoKey en mémoire uniquement, jamais persisté
+let appLock = { hasPassword: false, salt: null, check: null };
+let masterKey = null; // CryptoKey en mémoire uniquement, jamais persisté
 function defaultState(){
   return {
     supports: [], mouvements: [], valorisations: [], emprunts: [], remboursementsAnticipes: [], actions: [],
@@ -203,8 +227,20 @@ function defaultState(){
   };
 }
 async function loadIndex(){
-  try{ const raw = await storageGetRaw('grandlivre-index'); dossierIndex = raw ? JSON.parse(raw) : []; }
-  catch(e){ dossierIndex = []; }
+  try{
+    const raw = await storageGetRaw('grandlivre-index');
+    if(!raw){ dossierIndex = []; appLock = {hasPassword:false, salt:null, check:null}; return; }
+    const parsed = JSON.parse(raw);
+    if(Array.isArray(parsed)){
+      // ancien format (un mot de passe par dossier) : migration vers un mot de passe unique.
+      // les dossiers qui étaient protégés restent chiffrés avec leur ancienne clé jusqu'à ouverture (voir migrateLegacyDossier).
+      dossierIndex = parsed.map(d=> d.hasPassword ? {id:d.id, nom:d.nom, createdAt:d.createdAt, legacy:{salt:d.salt}} : {id:d.id, nom:d.nom, createdAt:d.createdAt});
+      appLock = {hasPassword:false, salt:null, check:null};
+    } else {
+      dossierIndex = parsed.dossiers || [];
+      appLock = parsed.appLock || {hasPassword:false, salt:null, check:null};
+    }
+  }catch(e){ dossierIndex = []; appLock = {hasPassword:false, salt:null, check:null}; }
 }
 // ============================================================
 // SYNCHRONISATION GOOGLE DRIVE
@@ -293,7 +329,7 @@ async function drivePushAll(){
       const raw = await storageGetRaw('grandlivre-dossier-'+meta.id);
       if(raw) dossiers[meta.id] = raw;
     }
-    await driveWriteData({index: dossierIndex, dossiers});
+    await driveWriteData({index: {appLock, dossiers: dossierIndex}, dossiers});
     updateDriveStatusUI('· synchronisé '+new Date().toLocaleTimeString('fr-FR'));
   }catch(e){ console.error('Erreur envoi Drive', e); updateDriveStatusUI('· échec de synchro Drive : '+e.message); }
   finally{ driveSyncing = false; }
@@ -301,9 +337,11 @@ async function drivePushAll(){
 async function driveSyncPull(){
   const remote = await driveReadData();
   if(remote){
-    dossierIndex = remote.index || [];
+    const idx = remote.index || {};
+    dossierIndex = Array.isArray(idx) ? idx : (idx.dossiers || []);
+    appLock = Array.isArray(idx) ? {hasPassword:false, salt:null, check:null} : (idx.appLock || {hasPassword:false, salt:null, check:null});
     for(const id in (remote.dossiers||{})) await storageSetRaw('grandlivre-dossier-'+id, remote.dossiers[id]);
-    await storageSetRaw('grandlivre-index', JSON.stringify(dossierIndex));
+    await storageSetRaw('grandlivre-index', JSON.stringify({appLock, dossiers: dossierIndex}));
   }
 }
 async function onDriveConnected(){
@@ -316,48 +354,81 @@ async function onDriveConnected(){
 }
 
 async function saveIndex(){
-  await storageSetRaw('grandlivre-index', JSON.stringify(dossierIndex));
+  await storageSetRaw('grandlivre-index', JSON.stringify({appLock, dossiers: dossierIndex}));
   if(googleAccessToken) drivePushAll();
 }
 async function persistCurrentDossier(){
-  const meta = currentDossierMeta();
   let payload;
-  if(meta && meta.hasPassword && currentDossierKey) payload = JSON.stringify(await encryptJSON(state, currentDossierKey));
+  if(appLock.hasPassword && masterKey) payload = JSON.stringify(await encryptJSON(state, masterKey));
   else payload = JSON.stringify(state);
   const r = await storageSetRaw('grandlivre-dossier-'+currentDossierId, payload);
   if(googleAccessToken) drivePushAll();
   return r;
 }
 function currentDossierMeta(){ return dossierIndex.find(d=>d.id===currentDossierId); }
-async function createDossier(nom, password){
+async function createDossier(nom){
   const id = uid()+uid();
-  const meta = {id, nom, hasPassword: !!password, salt: password ? randomSalt() : null, createdAt: new Date().toISOString()};
+  const meta = {id, nom, createdAt: new Date().toISOString()};
   dossierIndex.push(meta);
   await saveIndex();
   state = defaultState();
   currentDossierId = id;
-  currentDossierKey = password ? await deriveKey(password, meta.salt) : null;
   await persistCurrentDossier();
   enterApp();
 }
-async function openDossier(id, password){
+async function openDossier(id){
   const meta = dossierIndex.find(d=>d.id===id);
   if(!meta) throw new Error('Dossier introuvable');
+  if(meta.legacy) throw new Error('LEGACY_LOCKED');
   const raw = await storageGetRaw('grandlivre-dossier-'+id);
-  if(!raw){ state = defaultState(); currentDossierKey = null; }
+  if(!raw){ state = defaultState(); }
   else{
     const parsed = JSON.parse(raw);
     if(parsed.encrypted){
-      if(!password) throw new Error('MOT_DE_PASSE_REQUIS');
-      const key = await deriveKey(password, meta.salt);
-      try{ state = Object.assign(defaultState(), await decryptJSON(parsed, key)); currentDossierKey = key; }
-      catch(e){ throw new Error('MOT_DE_PASSE_INCORRECT'); }
-    } else { state = Object.assign(defaultState(), parsed); currentDossierKey = null; }
+      if(!appLock.hasPassword || !masterKey) throw new Error('VERROUILLE');
+      try{ state = Object.assign(defaultState(), await decryptJSON(parsed, masterKey)); }
+      catch(e){ throw new Error('DECHIFFREMENT_ECHEC'); }
+    } else { state = Object.assign(defaultState(), parsed); }
   }
   currentDossierId = id;
   enterApp();
 }
-function lockDossier(){ currentDossierId = null; currentDossierKey = null; showGate(); }
+// Dossier créé avant la migration vers le mot de passe unique : nécessite une seule fois son ancien
+// mot de passe pour être déchiffré, puis il est ré-enregistré selon le nouveau schéma (clair ou mot de passe unique).
+async function migrateLegacyDossier(meta, oldPassword){
+  const raw = await storageGetRaw('grandlivre-dossier-'+meta.id);
+  const parsed = raw ? JSON.parse(raw) : null;
+  if(!parsed || !parsed.encrypted){ delete meta.legacy; await saveIndex(); throw new Error('Rien à migrer, dossier déjà en clair.'); }
+  const oldKey = await deriveKey(oldPassword, meta.legacy.salt);
+  let data;
+  try{ data = await decryptJSON(parsed, oldKey); }
+  catch(e){ throw new Error('MOT_DE_PASSE_INCORRECT'); }
+  state = Object.assign(defaultState(), data);
+  currentDossierId = meta.id;
+  delete meta.legacy;
+  await saveIndex();
+  await persistCurrentDossier();
+  enterApp();
+}
+async function reencryptAllDossiers(newKeyOrNull){
+  const oldKey = masterKey;
+  for(const meta of dossierIndex){
+    if(meta.legacy) continue;
+    const raw = await storageGetRaw('grandlivre-dossier-'+meta.id);
+    if(!raw) continue;
+    const parsed = JSON.parse(raw);
+    let data;
+    if(parsed.encrypted){
+      if(!oldKey) continue;
+      try{ data = await decryptJSON(parsed, oldKey); }catch(e){ console.error('Erreur de re-chiffrement pour', meta.nom, e); continue; }
+    } else data = parsed;
+    const newPayload = newKeyOrNull ? JSON.stringify(await encryptJSON(data, newKeyOrNull)) : JSON.stringify(data);
+    await storageSetRaw('grandlivre-dossier-'+meta.id, newPayload);
+    if(meta.id===currentDossierId) state = Object.assign(defaultState(), data);
+  }
+}
+function lockDossier(){ currentDossierId = null; showGate(); }
+function lockApp(){ currentDossierId = null; masterKey = null; showGate(); }
 
 async function saveState(attempt){
   attempt = attempt || 1;
@@ -626,10 +697,19 @@ function svgLineChart(seriesList, width, height){
   return `<div>${legend}</div><svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}">${gridLines}${lines}${xLabels}</svg>`;
 }
 
+let currentTab = 'dashboard';
+const SECONDARY_TABS = ['valorisations','emprunts','projections','offres'];
+function switchTab(tab){
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn[data-tab]').forEach(x=>x.classList.toggle('active', x.dataset.tab===tab));
+  const moreBtn = document.getElementById('moreTabBtn');
+  if(moreBtn) moreBtn.classList.toggle('active', SECONDARY_TABS.includes(tab));
+  editing = {};
+  renderTab(tab);
+}
 function renderAll(){
   renderHeader();
-  const active = document.querySelector('nav.tabs button.active').dataset.tab;
-  renderTab(active);
+  renderTab(currentTab);
 }
 
 function renderTab(tab){
@@ -674,47 +754,82 @@ function showGate(){
   document.querySelector('header.top').style.display = 'none';
   document.querySelector('nav.tabs').style.display = 'none';
   document.getElementById('main').style.display = 'none';
-  renderGate();
+  document.getElementById('bottomTabs') && (document.getElementById('bottomTabs').style.display = 'none');
+  if(appLock.hasPassword && !masterKey) renderAppUnlock();
+  else renderGate();
 }
 function enterApp(){
   document.getElementById('gateScreen').style.display = 'none';
   document.querySelector('header.top').style.display = 'block';
   document.querySelector('nav.tabs').style.display = 'flex';
   document.getElementById('main').style.display = 'block';
+  document.getElementById('bottomTabs') && (document.getElementById('bottomTabs').style.display = '');
   const meta = currentDossierMeta();
   const lbl = document.getElementById('dossierLabel');
-  if(lbl) lbl.textContent = meta ? (meta.hasPassword?'🔒 ':'')+meta.nom : '';
+  if(lbl) lbl.textContent = meta ? meta.nom : '';
   updateDriveStatusUI();
   editing = {};
   loaded = true;
+  currentTab = 'dashboard';
+  document.querySelectorAll('.tab-btn[data-tab]').forEach(x=>x.classList.toggle('active', x.dataset.tab===currentTab));
   renderAll();
+}
+function renderAppUnlock(){
+  document.getElementById('gateScreen').innerHTML = `
+    <div style="max-width:420px;margin:100px auto;padding:0 20px">
+      <div class="brand" style="margin-bottom:8px;font-size:22px">Grand Livre</div>
+      <div class="sub" style="margin-bottom:20px">Application protégée par mot de passe.</div>
+      <form id="appUnlockForm" class="inline-form">
+        <div class="field" style="flex:1 1 100%"><label>Mot de passe</label><input type="password" name="password" required autofocus></div>
+        <button class="btn" type="submit">Déverrouiller</button>
+      </form>
+      <div id="appUnlockError" class="neg" style="margin-top:10px;font-size:13px"></div>
+    </div>`;
+  document.getElementById('appUnlockForm').onsubmit = async e=>{
+    e.preventDefault();
+    const pwd = new FormData(e.target).get('password');
+    try{
+      const candidate = await deriveKey(pwd, appLock.salt);
+      const check = await decryptJSON(appLock.check, candidate);
+      if(!check || !check.ok) throw new Error('bad');
+      masterKey = candidate;
+      renderGate();
+    }catch(err){ document.getElementById('appUnlockError').textContent = 'Mot de passe incorrect.'; }
+  };
 }
 function renderGate(){
   const list = dossierIndex.map(d=>`
     <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-      <div><h3 style="margin-bottom:2px">${d.hasPassword?'🔒 ':''}${d.nom}</h3><div class="sub" style="margin:0">Créé le ${fmtDate(d.createdAt)}</div></div>
+      <div><h3 style="margin-bottom:2px">${d.legacy?'⚠️ ':''}${d.nom}</h3><div class="sub" style="margin:0">${d.legacy? 'Ancien mot de passe requis (migration à faire une fois)' : 'Créé le '+fmtDate(d.createdAt)}</div></div>
       <div style="display:flex;gap:8px">
+        <button class="btn-edit" type="button" data-rename="${d.id}">Renommer</button>
         <button class="btn" type="button" data-open="${d.id}">Ouvrir</button>
         <button class="btn-del" type="button" data-del-dossier="${d.id}">Suppr.</button>
       </div>
     </div>`).join('');
   document.getElementById('gateScreen').innerHTML = `
     <div style="max-width:540px;margin:60px auto;padding:0 20px">
-      <div class="brand" style="margin-bottom:8px;font-size:22px">Grand Livre</div>
-      <div class="sub" style="margin-bottom:16px">Un dossier par personne ou par portefeuille suivi — chacun avec ses propres données, protégeable par mot de passe.</div>
+      <div class="brand" style="margin-bottom:8px;font-size:22px">Grand Livre ${appLock.hasPassword?'🔒':''}</div>
+      <div class="sub" style="margin-bottom:16px">Un dossier par personne ou par portefeuille suivi. Un seul mot de passe protège l'ensemble de tes dossiers (réglable ci-dessous).</div>
+      <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+        <div><h3 style="margin-bottom:2px">Sécurité</h3><div class="sub" style="margin:0">${appLock.hasPassword? 'Tous les dossiers sont protégés par un mot de passe unique.' : "Aucun mot de passe défini."}</div></div>
+        <button class="btn secondary" type="button" id="gateSecurityBtn">Gérer</button>
+      </div>
       <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px">
-        <div><h3 style="margin-bottom:2px">Synchronisation</h3><div class="sub" style="margin:0" id="gateDriveStatus">${googleAccessToken? 'Connecté à Google Drive' : "Connecte-toi pour récupérer tes dossiers sur cet appareil"}</div></div>
+        <div><h3 style="margin-bottom:2px">Synchronisation</h3><div class="sub" style="margin:0">${googleAccessToken? 'Connecté à Google Drive' : "Connecte-toi pour récupérer tes dossiers sur cet appareil"}</div></div>
         <button class="btn secondary" type="button" id="gateDriveBtn">${googleAccessToken? 'Déconnecter Drive':'Connecter Google Drive'}</button>
       </div>
       ${dossierIndex.length? `<h3 style="margin-bottom:14px">Tes dossiers</h3>${list}` : '<div class="empty">Aucun dossier pour le moment.</div>'}
       <button class="btn" type="button" id="newDossierBtn" style="margin-top:16px">+ Nouveau dossier</button>
     </div>`;
   document.getElementById('gateDriveBtn').onclick = ()=>{ googleAccessToken ? disconnectDrive() : connectDrive(); renderGate(); };
+  document.getElementById('gateSecurityBtn').onclick = appSecurityModal;
   document.querySelectorAll('[data-open]').forEach(b=>b.onclick=async ()=>{
     const meta = dossierIndex.find(d=>d.id===b.dataset.open);
-    if(meta.hasPassword) promptPasswordModal(meta);
-    else{ try{ await openDossier(meta.id, null); }catch(err){ alert("Erreur à l'ouverture : "+err.message); } }
+    if(meta.legacy) legacyPasswordModal(meta);
+    else{ try{ await openDossier(meta.id); }catch(err){ alert("Erreur à l'ouverture : "+err.message); } }
   });
+  document.querySelectorAll('[data-rename]').forEach(b=>b.onclick=()=>renameDossierModal(dossierIndex.find(d=>d.id===b.dataset.rename)));
   document.querySelectorAll('[data-del-dossier]').forEach(b=>b.onclick=async ()=>{
     const meta = dossierIndex.find(d=>d.id===b.dataset.delDossier);
     if(!confirm(`Supprimer définitivement le dossier "${meta.nom}" et toutes ses données ? Cette action est irréversible.`)) return;
@@ -725,23 +840,41 @@ function renderGate(){
   });
   document.getElementById('newDossierBtn').onclick = newDossierModal;
 }
-function promptPasswordModal(meta){
+function legacyPasswordModal(meta){
   showModal(`
-    <h3>Dossier protégé — ${meta.nom}</h3>
-    <div class="sub">Saisis le mot de passe pour l'ouvrir.</div>
-    <form id="pwForm" class="inline-form" style="margin-top:14px">
-      <div class="field" style="flex:1 1 100%"><label>Mot de passe</label><input type="password" name="password" required autofocus></div>
-      <button class="btn" type="submit">Déverrouiller</button>
-      <button class="btn secondary" type="button" id="pwCancel">Annuler</button>
+    <h3>Migration — ${meta.nom}</h3>
+    <div class="sub">Ce dossier utilisait l'ancien système de mot de passe individuel. Saisis-le une dernière fois pour le rattacher à ton mot de passe unique.</div>
+    <form id="legacyForm" class="inline-form" style="margin-top:14px">
+      <div class="field" style="flex:1 1 100%"><label>Ancien mot de passe du dossier</label><input type="password" name="password" required autofocus></div>
+      <button class="btn" type="submit">Migrer</button>
+      <button class="btn secondary" type="button" id="legacyCancel">Annuler</button>
     </form>
-    <div id="pwError" class="neg" style="margin-top:10px;font-size:13px"></div>
+    <div id="legacyError" class="neg" style="margin-top:10px;font-size:13px"></div>
   `);
-  document.getElementById('pwCancel').onclick = closeModal;
-  document.getElementById('pwForm').onsubmit = async e=>{
+  document.getElementById('legacyCancel').onclick = closeModal;
+  document.getElementById('legacyForm').onsubmit = async e=>{
     e.preventDefault();
     const pwd = new FormData(e.target).get('password');
-    try{ await openDossier(meta.id, pwd); closeModal(); }
-    catch(err){ document.getElementById('pwError').textContent = err.message==='MOT_DE_PASSE_INCORRECT' ? 'Mot de passe incorrect.' : 'Erreur : '+err.message; }
+    try{ await migrateLegacyDossier(meta, pwd); closeModal(); }
+    catch(err){ document.getElementById('legacyError').textContent = err.message==='MOT_DE_PASSE_INCORRECT' ? 'Mot de passe incorrect.' : 'Erreur : '+err.message; }
+  };
+}
+function renameDossierModal(meta){
+  showModal(`
+    <h3>Renommer le dossier</h3>
+    <form id="renameForm" class="inline-form" style="margin-top:14px">
+      <div class="field" style="flex:1 1 100%"><label>Nom</label><input name="nom" value="${meta.nom}" required autofocus></div>
+      <button class="btn" type="submit">Enregistrer</button>
+      <button class="btn secondary" type="button" id="renameCancel">Annuler</button>
+    </form>
+  `);
+  document.getElementById('renameCancel').onclick = closeModal;
+  document.getElementById('renameForm').onsubmit = async e=>{
+    e.preventDefault();
+    meta.nom = (new FormData(e.target).get('nom')||meta.nom).trim();
+    await saveIndex();
+    closeModal();
+    renderGate();
   };
 }
 function newDossierModal(){
@@ -749,63 +882,57 @@ function newDossierModal(){
     <h3>Nouveau dossier</h3>
     <form id="newDossierForm" class="inline-form" style="margin-top:14px">
       <div class="field" style="flex:1 1 100%"><label>Nom (ex. un prénom, "Perso", "Parents"…)</label><input name="nom" required autofocus></div>
-      <div class="field" style="flex:1 1 100%"><label style="display:flex;align-items:center;gap:6px;font-size:12px;text-transform:none;letter-spacing:0"><input type="checkbox" id="pwToggle"> Protéger par mot de passe</label></div>
-      <div class="field" style="flex:1 1 100%;display:none" id="pwFields1"><label>Mot de passe</label><input type="password" name="password"></div>
-      <div class="field" style="flex:1 1 100%;display:none" id="pwFields2"><label>Confirmer le mot de passe</label><input type="password" name="password2"></div>
       <button class="btn" type="submit">Créer</button>
       <button class="btn secondary" type="button" id="newDossierCancel">Annuler</button>
     </form>
     <div id="newDossierError" class="neg" style="margin-top:10px;font-size:13px"></div>
   `);
-  document.getElementById('pwToggle').onchange = e=>{
-    document.getElementById('pwFields1').style.display = e.target.checked?'':'none';
-    document.getElementById('pwFields2').style.display = e.target.checked?'':'none';
-  };
   document.getElementById('newDossierCancel').onclick = closeModal;
   document.getElementById('newDossierForm').onsubmit = async e=>{
     e.preventDefault();
-    const fd = new FormData(e.target);
-    const nom = (fd.get('nom')||'').trim();
-    const wantsPwd = document.getElementById('pwToggle').checked;
-    const p1 = fd.get('password'), p2 = fd.get('password2');
-    if(wantsPwd){
-      if(!p1 || p1.length<4){ document.getElementById('newDossierError').textContent='Mot de passe trop court (4 caractères minimum).'; return; }
-      if(p1!==p2){ document.getElementById('newDossierError').textContent='Les deux mots de passe ne correspondent pas.'; return; }
-    }
-    await createDossier(nom, wantsPwd?p1:null);
+    const nom = (new FormData(e.target).get('nom')||'').trim();
+    if(!nom) return;
+    await createDossier(nom);
     closeModal();
   };
 }
-function securityModal(){
-  const meta = currentDossierMeta();
-  if(!meta) return;
+function appSecurityModal(){
   showModal(`
-    <h3>Paramètres du dossier</h3>
-    <div class="sub">${meta.hasPassword? 'Ce dossier est actuellement protégé par mot de passe.' : "Ce dossier n'est pas protégé."}</div>
-    <form id="secForm" class="inline-form" style="margin-top:14px">
-      <div class="field" style="flex:1 1 100%"><label>Nom du dossier</label><input name="nom" value="${meta.nom}" required></div>
-      <div class="field" style="flex:1 1 100%"><label>${meta.hasPassword? 'Nouveau mot de passe (laisser vide pour retirer la protection)' : 'Définir un mot de passe (optionnel)'}</label><input type="password" name="password"></div>
+    <h3>Sécurité — mot de passe unique</h3>
+    <div class="sub">${appLock.hasPassword? 'Tous tes dossiers sont actuellement protégés par ce mot de passe (chiffrement AES-256).' : "Aucun mot de passe défini : tous les dossiers sont accessibles sans protection, y compris depuis le stockage local ou Google Drive."}</div>
+    <form id="appSecForm" class="inline-form" style="margin-top:14px">
+      <div class="field" style="flex:1 1 100%"><label>${appLock.hasPassword? 'Nouveau mot de passe (laisser vide pour retirer la protection)' : 'Définir un mot de passe'}</label><input type="password" name="password"></div>
       <div class="field" style="flex:1 1 100%"><label>Confirmer le mot de passe</label><input type="password" name="password2"></div>
       <button class="btn" type="submit">Enregistrer</button>
-      <button class="btn secondary" type="button" id="secCancel">Annuler</button>
+      <button class="btn secondary" type="button" id="appSecCancel">Annuler</button>
     </form>
-    <div id="secError" class="neg" style="margin-top:10px;font-size:13px"></div>
+    <div id="appSecError" class="neg" style="margin-top:10px;font-size:13px"></div>
   `);
-  document.getElementById('secCancel').onclick = closeModal;
-  document.getElementById('secForm').onsubmit = async e=>{
+  document.getElementById('appSecCancel').onclick = closeModal;
+  document.getElementById('appSecForm').onsubmit = async e=>{
     e.preventDefault();
     const fd = new FormData(e.target);
-    const nom = (fd.get('nom')||'').trim();
     const p1 = fd.get('password'), p2 = fd.get('password2');
-    if(p1 && p1!==p2){ document.getElementById('secError').textContent='Les mots de passe ne correspondent pas.'; return; }
-    if(p1 && p1.length<4){ document.getElementById('secError').textContent='Mot de passe trop court (4 caractères minimum).'; return; }
-    meta.nom = nom || meta.nom;
-    if(p1){ meta.hasPassword = true; meta.salt = randomSalt(); currentDossierKey = await deriveKey(p1, meta.salt); }
-    else if(meta.hasPassword){ meta.hasPassword = false; meta.salt = null; currentDossierKey = null; }
-    await saveIndex();
-    await persistCurrentDossier();
-    closeModal();
-    const lbl = document.getElementById('dossierLabel'); if(lbl) lbl.textContent = (meta.hasPassword?'🔒 ':'')+meta.nom;
+    if(p1 && p1!==p2){ document.getElementById('appSecError').textContent='Les mots de passe ne correspondent pas.'; return; }
+    if(p1 && p1.length<4){ document.getElementById('appSecError').textContent='Mot de passe trop court (4 caractères minimum).'; return; }
+    if(!p1 && !appLock.hasPassword){ closeModal(); return; }
+    const btn = e.target.querySelector('button[type=submit]'); btn.disabled = true; btn.textContent = 'Enregistrement…';
+    try{
+      if(p1){
+        const salt = randomSalt();
+        const newKey = await deriveKey(p1, salt);
+        await reencryptAllDossiers(newKey);
+        appLock = {hasPassword:true, salt, check: await encryptJSON({ok:true}, newKey)};
+        masterKey = newKey;
+      } else {
+        await reencryptAllDossiers(null);
+        appLock = {hasPassword:false, salt:null, check:null};
+        masterKey = null;
+      }
+      await saveIndex();
+      closeModal();
+      renderGate();
+    }catch(err){ document.getElementById('appSecError').textContent = 'Erreur : '+err.message; btn.disabled=false; btn.textContent='Enregistrer'; }
   };
 }
 
@@ -1318,12 +1445,39 @@ function renderOfferLinks(supportId){
     </a>`).join('');
 }
 
+function openMoreSheet(){
+  showModal(`
+    <h3>Plus</h3>
+    <div style="display:flex;flex-direction:column;gap:2px;margin-top:12px">
+      <button type="button" class="more-row" data-tab="valorisations">📊 Valorisations</button>
+      <button type="button" class="more-row" data-tab="emprunts">🏦 Emprunts</button>
+      <button type="button" class="more-row" data-tab="projections">🔮 Projections</button>
+      <button type="button" class="more-row" data-tab="offres">🔗 Offres</button>
+    </div>
+  `);
+  document.querySelectorAll('#modalContent .more-row').forEach(b=>b.onclick=()=>{ switchTab(b.dataset.tab); closeModal(); });
+}
+function openHeaderMenu(){
+  const meta = currentDossierMeta();
+  showModal(`
+    <h3>${meta?meta.nom:'Menu'}</h3>
+    <div style="display:flex;flex-direction:column;gap:2px;margin-top:12px">
+      <button type="button" class="more-row" id="menuDrive">${googleAccessToken?'🔗 Déconnecter Google Drive':'🔗 Connecter Google Drive'}</button>
+      <button type="button" class="more-row" id="menuSecurity">🔒 Sécurité</button>
+      <button type="button" class="more-row" id="menuLock">🔒 Verrouiller l'application</button>
+      <button type="button" class="more-row" id="menuSwitch">📁 Changer de dossier</button>
+      <button type="button" class="more-row" id="menuExport">⬇️ Exporter</button>
+      <button type="button" class="more-row" id="menuImport">⬆️ Importer</button>
+    </div>
+  `);
+  const relay = (id, targetId)=>{ const el=document.getElementById(id); if(el) el.onclick = ()=>{ closeModal(); document.getElementById(targetId).click(); }; };
+  relay('menuDrive','driveConnectBtn'); relay('menuSecurity','dossierSettingsBtn'); relay('menuLock','lockAppBtn');
+  relay('menuSwitch','switchDossierBtn'); relay('menuExport','exportBtn'); relay('menuImport','importBtn');
+}
+
 // ---------- HANDLERS ----------
 function attachHandlers(tab){
-  document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>{
-    document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active'); editing={}; renderTab(b.dataset.tab);
-  });
+  document.querySelectorAll('.tab-btn[data-tab]').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
 
   if(tab==='dashboard'){
     const ys = document.getElementById('dashboardYearSel');
@@ -1488,8 +1642,11 @@ function attachHandlers(tab){
 }
 
 document.getElementById('driveConnectBtn').onclick = ()=>{ googleAccessToken ? disconnectDrive() : connectDrive(); };
+document.getElementById('moreTabBtn').onclick = openMoreSheet;
+document.getElementById('headerMenuBtn').onclick = openHeaderMenu;
 document.getElementById('switchDossierBtn').onclick = ()=>{ if(confirm('Fermer ce dossier et revenir à la liste des dossiers ?')) lockDossier(); };
-document.getElementById('dossierSettingsBtn').onclick = securityModal;
+document.getElementById('dossierSettingsBtn').onclick = appSecurityModal;
+document.getElementById('lockAppBtn').onclick = ()=>{ if(confirm('Verrouiller l\'application ? Le mot de passe sera de nouveau demandé.')) lockApp(); };
 document.getElementById('exportBtn').onclick = ()=>{
   const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
