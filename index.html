@@ -41,6 +41,7 @@ nav.tabs button.active{color:var(--text);border-bottom-color:var(--gold);}
 .mobile-only-btn{display:none;background:none;border:1px solid var(--line);color:var(--text);border-radius:6px;width:34px;height:34px;font-size:18px;cursor:pointer;line-height:1;}
 .more-row{display:block;width:100%;text-align:left;background:var(--panel-2);border:1px solid var(--line);color:var(--text);padding:13px 14px;border-radius:6px;font-size:14px;cursor:pointer;font-family:'Inter',sans-serif;}
 .more-row:active{background:var(--ink);}
+.mobile-summary{display:none;}
 main{padding:28px 32px 80px;max-width:1180px;margin:0 auto;}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:20px 22px;margin-bottom:20px;}
@@ -80,27 +81,26 @@ button.btn-edit{background:none;border:none;color:var(--gold);font-size:12px;mar
 .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;}
 
 @media (max-width: 720px){
-  header.top{padding:14px 14px 10px;}
-  header.top .brand{font-size:13px;}
-  .brand-row{margin-bottom:10px;}
-  .header-actions{display:none;}
-  .mobile-only-btn{display:inline-flex;align-items:center;justify-content:center;}
+  header.top{display:none !important;}
   .ledger-row{gap:18px;row-gap:8px;}
   .ledger-item .value{font-size:19px;}
   .ledger-item.net .value{font-size:23px;}
   nav.tabs{display:none;}
   .bottom-tabs{display:flex;position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);z-index:40;padding:4px 2px calc(4px + env(safe-area-inset-bottom));}
-  .bottom-tab-btn{flex:1;background:none;border:none;color:var(--text-dim);display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px;font-family:'Inter',sans-serif;cursor:pointer;}
-  .bottom-tab-btn .bt-icon{font-size:19px;line-height:1;}
+  .bottom-tab-btn{flex:1;background:none;border:none;color:var(--text-dim);display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px;font-family:'Inter',sans-serif;cursor:pointer;}
+  .bottom-tab-btn .bt-icon{width:22px;height:22px;display:block;}
+  .bottom-tab-btn .bt-icon svg{width:100%;height:100%;}
   .bottom-tab-btn .bt-label{font-size:10px;font-weight:500;}
   .bottom-tab-btn.active{color:var(--gold);}
-  main{padding:14px 12px calc(84px + env(safe-area-inset-bottom));}
+  .mobile-summary{display:block !important;margin-top:4px;}
+  main{padding:16px 12px calc(84px + env(safe-area-inset-bottom));}
   .grid2{grid-template-columns:1fr;gap:14px;}
   .card{padding:14px 14px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
   .card table{min-width:600px;}
   form.inline-form{padding:12px;gap:8px;}
   form.inline-form .field{flex:1 1 100%;}
-  input,select{width:100%;min-width:0;box-sizing:border-box;}
+  /* 16px minimum : sous ce seuil iOS Safari zoome automatiquement au focus, ce qui décale l'écran */
+  input,select,textarea{font-size:16px;width:100%;min-width:0;box-sizing:border-box;}
   form.inline-form button.btn{width:100%;}
   table{font-size:12px;}
   th,td{padding:7px 6px;}
@@ -108,8 +108,15 @@ button.btn-edit{background:none;border:none;color:var(--gold);font-size:12px;mar
   .chart-box{min-width:0;}
   #modalOverlay{align-items:flex-end;}
   #modalContent{padding:18px 16px calc(18px + env(safe-area-inset-bottom));width:100%;max-width:100%;border-radius:16px 16px 0 0;max-height:82vh;}
+  .more-row{display:flex;align-items:center;gap:12px;}
+  .more-row .icon{width:19px;height:19px;flex-shrink:0;color:var(--text-dim);}
+  .more-row .icon svg{width:100%;height:100%;}
+  .sheet-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);margin:16px 0 6px;}
+  .sheet-label:first-of-type{margin-top:4px;}
+  .sheet-group{display:flex;flex-direction:column;gap:4px;}
 }
 </style>
+
 
 </head>
 <body>
@@ -119,7 +126,6 @@ button.btn-edit{background:none;border:none;color:var(--gold);font-size:12px;mar
 <header class="top">
   <div class="brand-row">
     <div class="brand">Grand Livre <span id="saveStatus" class="save-status"></span></div>
-    <button type="button" id="headerMenuBtn" class="mobile-only-btn">⋯</button>
     <span class="header-actions">
       <span id="dossierLabel" class="save-status" style="margin-right:6px"></span>
       <span id="driveStatus" class="save-status" style="margin-right:6px"></span>
@@ -153,11 +159,11 @@ button.btn-edit{background:none;border:none;color:var(--gold);font-size:12px;mar
 <main id="main"></main>
 
 <nav class="bottom-tabs" id="bottomTabs">
-  <button class="tab-btn bottom-tab-btn" data-tab="dashboard"><span class="bt-icon">🏠</span><span class="bt-label">Accueil</span></button>
-  <button class="tab-btn bottom-tab-btn" data-tab="mouvements"><span class="bt-icon">💶</span><span class="bt-label">Mvts</span></button>
-  <button class="tab-btn bottom-tab-btn" data-tab="actions"><span class="bt-icon">📈</span><span class="bt-label">Actions</span></button>
-  <button class="tab-btn bottom-tab-btn" data-tab="supports"><span class="bt-icon">🗂️</span><span class="bt-label">Supports</span></button>
-  <button type="button" class="bottom-tab-btn" id="moreTabBtn"><span class="bt-icon">⋯</span><span class="bt-label">Plus</span></button>
+  <button class="tab-btn bottom-tab-btn" data-tab="dashboard"><span class="bt-icon" data-icon="dashboard"></span><span class="bt-label">Accueil</span></button>
+  <button class="tab-btn bottom-tab-btn" data-tab="mouvements"><span class="bt-icon" data-icon="mouvements"></span><span class="bt-label">Mouvements</span></button>
+  <button class="tab-btn bottom-tab-btn" data-tab="actions"><span class="bt-icon" data-icon="actions"></span><span class="bt-label">Actions</span></button>
+  <button class="tab-btn bottom-tab-btn" data-tab="supports"><span class="bt-icon" data-icon="supports"></span><span class="bt-label">Supports</span></button>
+  <button type="button" class="bottom-tab-btn" id="moreTabBtn"><span class="bt-icon" data-icon="more"></span><span class="bt-label">Plus</span></button>
 </nav>
 
 <div id="modalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;align-items:center;justify-content:center;">
@@ -269,15 +275,31 @@ function initGoogleAuth(){
   });
 }
 function connectDrive(){
-  if(!googleConfigured()){ alert("La synchronisation Google Drive n'est pas encore configurée dans ce fichier : il manque le Client ID Google (voir les instructions fournies)."); return; }
+  if(!googleConfigured()){ alert("La synchronisation Google Drive n'est pas encore configurée dans ce fichier : il manque le Client ID Google."); return; }
   if(!window.google || !google.accounts){ alert("Le service d'authentification Google n'est pas encore chargé — vérifie ta connexion internet et réessaie dans un instant."); return; }
   if(!driveTokenClient) initGoogleAuth();
-  driveTokenClient.requestAccessToken({prompt: googleAccessToken ? '' : 'consent'});
+  try{ localStorage.setItem('grandlivre-drive-optin','1'); }catch(e){}
+  driveTokenClient.requestAccessToken({prompt: 'consent'});
+}
+// Tente de retrouver un accès sans réafficher la fenêtre de consentement (l'utilisateur l'a déjà accordé).
+function trySilentDriveReconnect(){
+  let optedIn = false;
+  try{ optedIn = localStorage.getItem('grandlivre-drive-optin')==='1'; }catch(e){}
+  if(!optedIn || !googleConfigured() || !window.google || !google.accounts) return;
+  if(!driveTokenClient) initGoogleAuth();
+  try{ driveTokenClient.requestAccessToken({prompt: ''}); }catch(e){ console.warn('Reconnexion Drive silencieuse impossible', e); }
 }
 function disconnectDrive(){
   if(googleAccessToken && window.google) google.accounts.oauth2.revoke(googleAccessToken, ()=>{});
   googleAccessToken = null; driveFileId = null;
+  try{ localStorage.removeItem('grandlivre-drive-optin'); }catch(e){}
   updateDriveStatusUI();
+}
+async function forceSyncNow(){
+  if(!googleAccessToken){ connectDrive(); return; }
+  updateDriveStatusUI('· synchronisation…');
+  drivePushPending = true;
+  await drivePushFlush();
 }
 function updateDriveStatusUI(customMsg){
   const el = document.getElementById('driveStatus');
@@ -320,9 +342,20 @@ async function driveWriteData(obj){
     method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(obj)
   });
 }
-async function drivePushAll(){
-  if(!googleAccessToken || driveSyncing) return;
+let drivePushPending = false;
+let drivePushTimer = null;
+// Regroupe les sauvegardes rapprochées, et ne perd jamais une sauvegarde survenue pendant un envoi en cours.
+function drivePushAll(){
+  if(!googleAccessToken) return;
+  drivePushPending = true;
+  updateDriveStatusUI('· synchronisation…');
+  clearTimeout(drivePushTimer);
+  drivePushTimer = setTimeout(drivePushFlush, 600);
+}
+async function drivePushFlush(){
+  if(!googleAccessToken || driveSyncing || !drivePushPending) return;
   driveSyncing = true;
+  drivePushPending = false;
   try{
     const dossiers = {};
     for(const meta of dossierIndex){
@@ -331,8 +364,20 @@ async function drivePushAll(){
     }
     await driveWriteData({index: {appLock, dossiers: dossierIndex}, dossiers});
     updateDriveStatusUI('· synchronisé '+new Date().toLocaleTimeString('fr-FR'));
-  }catch(e){ console.error('Erreur envoi Drive', e); updateDriveStatusUI('· échec de synchro Drive : '+e.message); }
-  finally{ driveSyncing = false; }
+  }catch(e){
+    console.error('Erreur envoi Drive', e);
+    if(/\b401\b/.test(e.message)){
+      googleAccessToken = null;
+      updateDriveStatusUI('· session Drive expirée, reconnecte-toi');
+    } else {
+      drivePushPending = true; // on retentera au prochain enregistrement
+      updateDriveStatusUI('· échec de synchro : '+e.message);
+    }
+  }
+  finally{
+    driveSyncing = false;
+    if(drivePushPending && googleAccessToken){ clearTimeout(drivePushTimer); drivePushTimer = setTimeout(drivePushFlush, 1500); }
+  }
 }
 async function driveSyncPull(){
   const remote = await driveReadData();
@@ -454,7 +499,45 @@ const DISPOS = ['Liquide','Disponible (fiscalité dégressive)','Bloqué à éch
 const fmtEUR = n => (n===null||n===undefined||isNaN(n)) ? '—' : n.toLocaleString('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0});
 const fmtPct = n => (n===null||n===undefined||isNaN(n)) ? '—' : (n*100).toLocaleString('fr-FR',{maximumFractionDigits:1})+' %';
 const fmtDate = d => new Date(d).toLocaleDateString('fr-FR');
+// Jeu d'icônes en traits fins, cohérent avec la typographie du site (pas d'emojis)
+const svgIcon = (paths, extra) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" ${extra||''}>${paths}</svg>`;
+const ICONS = {
+  dashboard: svgIcon('<path d="M3 12l9-8 9 8"/><path d="M5 10.5V20h14v-9.5"/><path d="M9.5 20v-5.5h5V20"/>'),
+  mouvements: svgIcon('<path d="M4 8h13"/><path d="M14 5l3 3-3 3"/><path d="M20 16H7"/><path d="M10 13l-3 3 3 3"/>'),
+  actions: svgIcon('<path d="M4 18l5-5 3 3 7-8"/><path d="M15 8h4v4"/>'),
+  supports: svgIcon('<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M8 6V4h8v2"/>'),
+  more: svgIcon('<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>'),
+  valorisations: svgIcon('<path d="M4 20V9"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/>'),
+  emprunts: svgIcon('<path d="M3 9l9-5 9 5"/><path d="M5 9v10"/><path d="M12 9v10"/><path d="M19 9v10"/><path d="M3 20h18"/>'),
+  projections: svgIcon('<path d="M3 17c4 0 5-9 9-9s5 5 9 5"/><circle cx="12" cy="8" r="0.9"/>'),
+  offres: svgIcon('<path d="M10 13a4 4 0 006 .5l2-2a4 4 0 00-6-6l-1 1"/><path d="M14 11a4 4 0 00-6-.5l-2 2a4 4 0 006 6l1-1"/>'),
+  sync: svgIcon('<path d="M21 12a9 9 0 01-15 6.7L3 16"/><path d="M3 12a9 9 0 0115-6.7L21 8"/><path d="M21 4v4h-4"/><path d="M3 20v-4h4"/>'),
+  unlink: svgIcon('<path d="M9 15l-2 2a4 4 0 01-6-6l2-2"/><path d="M15 9l2-2a4 4 0 016 6l-2 2"/><path d="M4 4l16 16"/>'),
+  shield: svgIcon('<path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/>'),
+  lock: svgIcon('<rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/>'),
+  folder: svgIcon('<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>'),
+  download: svgIcon('<path d="M12 4v10"/><path d="M8 11l4 4 4-4"/><path d="M4 19h16"/>'),
+  upload: svgIcon('<path d="M12 20V10"/><path d="M8 13l4-4 4 4"/><path d="M4 5h16"/>'),
+};
 function isoToFr(iso){ if(!iso) return ''; const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
+// Champ date unifié : saisie au clavier numérique, les "/" s'insèrent tout seuls.
+function dateInputHTML(name, isoValue, required){
+  return `<input name="${name}" type="text" inputmode="numeric" class="date-mask" placeholder="JJ/MM/AAAA" maxlength="10" ${required?'required':''} value="${isoValue?isoToFr(isoValue):''}">`;
+}
+function attachDateMasks(root){
+  (root||document).querySelectorAll('input.date-mask').forEach(inp=>{
+    if(inp.dataset.maskReady) return;
+    inp.dataset.maskReady = '1';
+    inp.addEventListener('input', ()=>{
+      const atEnd = inp.selectionStart===inp.value.length;
+      const digits = inp.value.replace(/\D/g,'').slice(0,8);
+      let out = digits;
+      if(digits.length>4) out = digits.slice(0,2)+'/'+digits.slice(2,4)+'/'+digits.slice(4);
+      else if(digits.length>2) out = digits.slice(0,2)+'/'+digits.slice(2);
+      if(out!==inp.value){ inp.value = out; if(atEnd) inp.setSelectionRange(out.length, out.length); }
+    });
+  });
+}
 function frToIso(fr){ const mch = (fr||'').trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/); if(!mch) return null; return `${mch[3]}-${mch[2]}-${mch[1]}`; }
 function addMonths(dateStr, n){ const d=new Date(dateStr); d.setMonth(d.getMonth()+n); return d; }
 function daysBetween(a,b){ return (new Date(b)-new Date(a))/86400000; }
@@ -742,10 +825,12 @@ function openXIRRDetail(supportIds, sinceDate, untilDate, title){
 }
 function closeModal(){ document.getElementById('modalOverlay').style.display = 'none'; }
 function showModal(html){
-  document.getElementById('modalContent').innerHTML = html;
+  const content = document.getElementById('modalContent');
+  content.innerHTML = html;
   const overlay = document.getElementById('modalOverlay');
   overlay.style.display = 'flex';
   overlay.onclick = e=>{ if(e.target===overlay) closeModal(); };
+  attachDateMasks(content);
 }
 
 // ---------- ÉCRAN DOSSIERS ----------
@@ -780,7 +865,7 @@ function renderAppUnlock(){
       <div class="brand" style="margin-bottom:8px;font-size:22px">Grand Livre</div>
       <div class="sub" style="margin-bottom:20px">Application protégée par mot de passe.</div>
       <form id="appUnlockForm" class="inline-form">
-        <div class="field" style="flex:1 1 100%"><label>Mot de passe</label><input type="password" name="password" required autofocus></div>
+        <div class="field" style="flex:1 1 100%"><label>Mot de passe</label><input type="password" id="appUnlockPassword" name="password" autocomplete="current-password" required autofocus></div>
         <button class="btn" type="submit">Déverrouiller</button>
       </form>
       <div id="appUnlockError" class="neg" style="margin-top:10px;font-size:13px"></div>
@@ -845,7 +930,7 @@ function legacyPasswordModal(meta){
     <h3>Migration — ${meta.nom}</h3>
     <div class="sub">Ce dossier utilisait l'ancien système de mot de passe individuel. Saisis-le une dernière fois pour le rattacher à ton mot de passe unique.</div>
     <form id="legacyForm" class="inline-form" style="margin-top:14px">
-      <div class="field" style="flex:1 1 100%"><label>Ancien mot de passe du dossier</label><input type="password" name="password" required autofocus></div>
+      <div class="field" style="flex:1 1 100%"><label>Ancien mot de passe du dossier</label><input type="password" id="legacyPassword" name="password" autocomplete="current-password" required autofocus></div>
       <button class="btn" type="submit">Migrer</button>
       <button class="btn secondary" type="button" id="legacyCancel">Annuler</button>
     </form>
@@ -901,8 +986,8 @@ function appSecurityModal(){
     <h3>Sécurité — mot de passe unique</h3>
     <div class="sub">${appLock.hasPassword? 'Tous tes dossiers sont actuellement protégés par ce mot de passe (chiffrement AES-256).' : "Aucun mot de passe défini : tous les dossiers sont accessibles sans protection, y compris depuis le stockage local ou Google Drive."}</div>
     <form id="appSecForm" class="inline-form" style="margin-top:14px">
-      <div class="field" style="flex:1 1 100%"><label>${appLock.hasPassword? 'Nouveau mot de passe (laisser vide pour retirer la protection)' : 'Définir un mot de passe'}</label><input type="password" name="password"></div>
-      <div class="field" style="flex:1 1 100%"><label>Confirmer le mot de passe</label><input type="password" name="password2"></div>
+      <div class="field" style="flex:1 1 100%"><label>${appLock.hasPassword? 'Nouveau mot de passe (laisser vide pour retirer la protection)' : 'Définir un mot de passe'}</label><input type="password" id="appSecPassword" name="password" autocomplete="new-password"></div>
+      <div class="field" style="flex:1 1 100%"><label>Confirmer le mot de passe</label><input type="password" id="appSecPassword2" name="password2" autocomplete="new-password"></div>
       <button class="btn" type="submit">Enregistrer</button>
       <button class="btn secondary" type="button" id="appSecCancel">Annuler</button>
     </form>
@@ -1018,7 +1103,16 @@ function viewDashboard(){
     <table><thead><tr><th>Emprunt</th><th>Restant dû</th><th>Intérêts payés</th><th>Intérêts restants</th><th>Assurance totale</th></tr></thead><tbody>${empRows}</tbody></table>
   </div>` : '';
 
+  const assetsNow = totalAssets(), debtsNow = totalDebts();
   return `
+  <div class="card mobile-summary">
+    <div class="label" style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim)">Patrimoine net</div>
+    <div class="mono" style="font-size:30px;color:var(--gold);margin:2px 0 10px">${fmtEUR(assetsNow-debtsNow)}</div>
+    <div style="display:flex;gap:22px">
+      <div><div class="label" style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim)">Actifs</div><div class="mono pos" style="font-size:15px">${fmtEUR(assetsNow)}</div></div>
+      <div><div class="label" style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim)">Dettes</div><div class="mono neg" style="font-size:15px">${fmtEUR(debtsNow)}</div></div>
+    </div>
+  </div>
   <div class="card">
     <h3>Performance du portefeuille</h3>
     <div class="sub">Tous les supports combinés, méthode XIRR</div>
@@ -1073,7 +1167,7 @@ function viewSupports(){
       <div class="field"><label>Nom</label><input name="nom" required value="${e?e.nom:''}"></div>
       <div class="field"><label>Type</label><select name="type">${state.types.map(t=>`<option ${e&&e.type===t?'selected':''}>${t}</option>`).join('')}</select></div>
       <div class="field"><label>Disponibilité</label><select name="disponibilite">${DISPOS.map(t=>`<option ${e&&e.disponibilite===t?'selected':''}>${t}</option>`).join('')}</select></div>
-      <div class="field"><label>Date de disponibilité (si différée, ex. PER, PEE)</label><input name="dateDisponibilite" type="text" inputmode="numeric" placeholder="JJ/MM/AAAA" pattern="\\d{2}/\\d{2}/\\d{4}" value="${e&&e.dateDisponibilite?isoToFr(e.dateDisponibilite):''}"></div>
+      <div class="field"><label>Date de disponibilité (si différée, ex. PER, PEE)</label>${dateInputHTML('dateDisponibilite', e&&e.dateDisponibilite?e.dateDisponibilite:null, false)}</div>
       <div class="field"><label>Délai jouissance (mois, SCPI)</label><input name="delaiJouissance" type="number" min="0" value="${e?(e.delaiJouissance||0):0}"></div>
       <button class="btn" type="submit">${e?'Enregistrer':'Ajouter'}</button>
       ${e?'<button class="btn secondary" type="button" id="cancelEditSupport">Annuler</button>':''}
@@ -1135,7 +1229,7 @@ function viewMouvements(){
         <option value="retrait" ${defaultType==='retrait'?'selected':''}>Retrait</option>
         <option value="interet" ${defaultType==='interet'?'selected':''}>Intérêts perçus</option>
       </select></div>
-      <div class="field"><label>Date (JJ/MM/AAAA)</label><input name="date" type="text" inputmode="numeric" placeholder="JJ/MM/AAAA" pattern="\\d{2}/\\d{2}/\\d{4}" required value="${e?isoToFr(e.date):''}"></div>
+      <div class="field"><label>Date (JJ/MM/AAAA)</label>${dateInputHTML('date', e?e.date:null, true)}</div>
       <div class="field"><label>Montant (€)</label><input name="montant" type="number" step="0.01" min="0" required value="${e?Math.abs(e.montant):''}"></div>
       <div class="field" id="rattachementField" style="${defaultType==='interet'?'':'display:none'}"><label>Année de rattachement</label><input name="anneeRattachement" type="number" value="${e&&e.anneeRattachement?e.anneeRattachement:new Date().getFullYear()}"></div>
       <div class="field"><label>Dont frais (€)</label><input name="fraisMontant" type="number" step="0.01" value="${e?(e.fraisMontant||''):''}"></div>
@@ -1215,7 +1309,7 @@ function viewValorisations(){
     <div class="helptext">Ajoute un point au 1er janvier de chaque année (pour calculer la performance annuelle) et un point récent (pour la valeur actuelle).</div>
     <form class="inline-form" id="formValo">
       <div class="field"><label>Support</label><select name="supportId">${supOpts(e)}</select></div>
-      <div class="field"><label>Date</label><input name="date" type="date" required value="${e?e.date:''}"></div>
+      <div class="field"><label>Date</label>${dateInputHTML('date', e?e.date:null, true)}</div>
       <div class="field"><label>Valeur (€)</label><input name="value" type="number" step="0.01" required value="${e?e.value:''}"></div>
       <button class="btn" type="submit">${e?'Enregistrer':'Ajouter'}</button>
       ${e?'<button class="btn secondary" type="button" id="cancelEditValo">Annuler</button>':''}
@@ -1260,7 +1354,7 @@ function viewEmprunts(){
       <div class="field"><label>Capital emprunté (€)</label><input name="capital" type="number" step="0.01" required value="${ed?ed.capital:''}"></div>
       <div class="field"><label>Taux annuel (%)</label><input name="taux" type="number" step="0.01" required value="${ed?ed.taux:''}"></div>
       <div class="field"><label>Durée (mois)</label><input name="duree" type="number" required value="${ed?ed.duree:''}"></div>
-      <div class="field"><label>Date de départ</label><input name="dateDebut" type="date" required value="${ed?ed.dateDebut:''}"></div>
+      <div class="field"><label>Date de départ</label>${dateInputHTML('dateDebut', ed?ed.dateDebut:null, true)}</div>
       <div class="field"><label>Amortissement</label><select name="type"><option value="constant" ${ed&&ed.type==='constant'?'selected':''}>Mensualités constantes</option><option value="infine" ${ed&&ed.type==='infine'?'selected':''}>In fine</option></select></div>
       <div class="field"><label>Assurance</label><select name="assuranceType"><option value="pourcentage" ${ed&&ed.assuranceType==='pourcentage'?'selected':''}>% annuel du capital initial</option><option value="montant" ${ed&&ed.assuranceType==='montant'?'selected':''}>Montant fixe mensuel</option></select></div>
       <div class="field"><label>Valeur assurance</label><input name="assuranceValeur" type="number" step="0.001" value="${ed&&ed.assuranceValeur?ed.assuranceValeur:''}"></div>
@@ -1278,7 +1372,7 @@ function viewEmprunts(){
     <div class="helptext">Choisis l'effet du remboursement : réduire la durée (mensualité inchangée) ou réduire la mensualité (durée inchangée).</div>
     <form class="inline-form" id="formPrepay">
       <div class="field"><label>Emprunt</label><select name="empruntId">${empOpts()}</select></div>
-      <div class="field"><label>Date</label><input name="date" type="date" required></div>
+      <div class="field"><label>Date</label>${dateInputHTML('date', null, true)}</div>
       <div class="field"><label>Montant (€)</label><input name="montant" type="number" step="0.01" required></div>
       <div class="field"><label>Effet</label><select name="mode"><option value="duree">Réduire la durée</option><option value="mensualite">Réduire la mensualité</option></select></div>
       <button class="btn" type="submit">Ajouter</button>
@@ -1322,7 +1416,7 @@ function viewProjections(){
     <form class="inline-form" id="formVR">
       <div class="field"><label>Support</label><select name="supportId">${supOpts()}</select></div>
       <div class="field"><label>Montant mensuel (€)</label><input name="montant" type="number" step="1" required></div>
-      <div class="field"><label>Fin (optionnel)</label><input name="dateFin" type="date"></div>
+      <div class="field"><label>Fin (optionnel)</label>${dateInputHTML('dateFin', null, false)}</div>
       <div class="field"><label>Scénario</label><select name="scenario"><option value="both">Toujours actif</option><option value="arbitrage">Arbitrage seulement</option></select></div>
       <button class="btn" type="submit">Ajouter</button>
     </form>`:''}
@@ -1334,7 +1428,7 @@ function viewProjections(){
     ${state.emprunts.length? `
     <form class="inline-form" id="formRS">
       <div class="field"><label>Emprunt</label><select name="empruntId">${empOpts()}</select></div>
-      <div class="field"><label>Date</label><input name="date" type="date" required></div>
+      <div class="field"><label>Date</label>${dateInputHTML('date', null, true)}</div>
       <div class="field"><label>Montant (€)</label><input name="montant" type="number" step="1" required></div>
       <div class="field"><label>Scénario</label><select name="scenario"><option value="arbitrage">Arbitrage seulement</option><option value="both">Toujours actif</option></select></div>
       <button class="btn" type="submit">Ajouter</button>
@@ -1446,30 +1540,29 @@ function renderOfferLinks(supportId){
 }
 
 function openMoreSheet(){
-  showModal(`
-    <h3>Plus</h3>
-    <div style="display:flex;flex-direction:column;gap:2px;margin-top:12px">
-      <button type="button" class="more-row" data-tab="valorisations">📊 Valorisations</button>
-      <button type="button" class="more-row" data-tab="emprunts">🏦 Emprunts</button>
-      <button type="button" class="more-row" data-tab="projections">🔮 Projections</button>
-      <button type="button" class="more-row" data-tab="offres">🔗 Offres</button>
-    </div>
-  `);
-  document.querySelectorAll('#modalContent .more-row').forEach(b=>b.onclick=()=>{ switchTab(b.dataset.tab); closeModal(); });
-}
-function openHeaderMenu(){
   const meta = currentDossierMeta();
   showModal(`
     <h3>${meta?meta.nom:'Menu'}</h3>
-    <div style="display:flex;flex-direction:column;gap:2px;margin-top:12px">
-      <button type="button" class="more-row" id="menuDrive">${googleAccessToken?'🔗 Déconnecter Google Drive':'🔗 Connecter Google Drive'}</button>
-      <button type="button" class="more-row" id="menuSecurity">🔒 Sécurité</button>
-      <button type="button" class="more-row" id="menuLock">🔒 Verrouiller l'application</button>
-      <button type="button" class="more-row" id="menuSwitch">📁 Changer de dossier</button>
-      <button type="button" class="more-row" id="menuExport">⬇️ Exporter</button>
-      <button type="button" class="more-row" id="menuImport">⬆️ Importer</button>
+    <div class="sheet-label">Sections</div>
+    <div class="sheet-group">
+      <button type="button" class="more-row" data-tab="valorisations"><span class="icon">${ICONS.valorisations}</span><span>Valorisations</span></button>
+      <button type="button" class="more-row" data-tab="emprunts"><span class="icon">${ICONS.emprunts}</span><span>Emprunts</span></button>
+      <button type="button" class="more-row" data-tab="projections"><span class="icon">${ICONS.projections}</span><span>Projections</span></button>
+      <button type="button" class="more-row" data-tab="offres"><span class="icon">${ICONS.offres}</span><span>Offres</span></button>
+    </div>
+    <div class="sheet-label">Données &amp; sécurité</div>
+    <div class="sheet-group">
+      <button type="button" class="more-row" id="menuSync"><span class="icon">${ICONS.sync}</span><span>${googleAccessToken?'Synchroniser maintenant':'Connecter Google Drive'}</span></button>
+      ${googleAccessToken?`<button type="button" class="more-row" id="menuDrive"><span class="icon">${ICONS.unlink}</span><span>Déconnecter Drive</span></button>`:''}
+      <button type="button" class="more-row" id="menuSecurity"><span class="icon">${ICONS.shield}</span><span>Sécurité</span></button>
+      <button type="button" class="more-row" id="menuLock"><span class="icon">${ICONS.lock}</span><span>Verrouiller l'application</span></button>
+      <button type="button" class="more-row" id="menuSwitch"><span class="icon">${ICONS.folder}</span><span>Changer de dossier</span></button>
+      <button type="button" class="more-row" id="menuExport"><span class="icon">${ICONS.download}</span><span>Exporter</span></button>
+      <button type="button" class="more-row" id="menuImport"><span class="icon">${ICONS.upload}</span><span>Importer</span></button>
     </div>
   `);
+  document.querySelectorAll('#modalContent .more-row[data-tab]').forEach(b=>b.onclick=()=>{ switchTab(b.dataset.tab); closeModal(); });
+  const sync = document.getElementById('menuSync'); if(sync) sync.onclick = ()=>{ closeModal(); forceSyncNow(); };
   const relay = (id, targetId)=>{ const el=document.getElementById(id); if(el) el.onclick = ()=>{ closeModal(); document.getElementById(targetId).click(); }; };
   relay('menuDrive','driveConnectBtn'); relay('menuSecurity','dossierSettingsBtn'); relay('menuLock','lockAppBtn');
   relay('menuSwitch','switchDossierBtn'); relay('menuExport','exportBtn'); relay('menuImport','importBtn');
@@ -1478,6 +1571,7 @@ function openHeaderMenu(){
 // ---------- HANDLERS ----------
 function attachHandlers(tab){
   document.querySelectorAll('.tab-btn[data-tab]').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+  attachDateMasks(document);
 
   if(tab==='dashboard'){
     const ys = document.getElementById('dashboardYearSel');
@@ -1584,7 +1678,9 @@ function attachHandlers(tab){
   if(tab==='valorisations'){
     const f = document.getElementById('formValo');
     if(f) f.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(f);
-      const obj={supportId:fd.get('supportId'), date:fd.get('date'), value:Number(fd.get('value'))};
+      const isoV = frToIso(fd.get('date'));
+      if(!isoV){ alert('Date invalide : utilise le format JJ/MM/AAAA.'); return; }
+      const obj={supportId:fd.get('supportId'), date:isoV, value:Number(fd.get('value'))};
       if(editing.valo){ Object.assign(state.valorisations.find(v=>v.id===editing.valo), obj); editing.valo=null; }
       else state.valorisations.push({id:uid(), ...obj});
       saveState(); renderAll();
@@ -1597,7 +1693,9 @@ function attachHandlers(tab){
   if(tab==='emprunts'){
     const f = document.getElementById('formEmprunt');
     if(f) f.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(f);
-      const obj={nom:fd.get('nom'), capital:Number(fd.get('capital')), taux:Number(fd.get('taux')), duree:Number(fd.get('duree')), dateDebut:fd.get('dateDebut'), type:fd.get('type'), assuranceType:fd.get('assuranceType'), assuranceValeur: fd.get('assuranceValeur')?Number(fd.get('assuranceValeur')):null};
+      const isoDebut = frToIso(fd.get('dateDebut'));
+      if(!isoDebut){ alert('Date de départ invalide : utilise le format JJ/MM/AAAA.'); return; }
+      const obj={nom:fd.get('nom'), capital:Number(fd.get('capital')), taux:Number(fd.get('taux')), duree:Number(fd.get('duree')), dateDebut:isoDebut, type:fd.get('type'), assuranceType:fd.get('assuranceType'), assuranceValeur: fd.get('assuranceValeur')?Number(fd.get('assuranceValeur')):null};
       if(editing.emprunt){ Object.assign(state.emprunts.find(x=>x.id===editing.emprunt), obj); editing.emprunt=null; }
       else state.emprunts.push({id:uid(), ...obj});
       saveState(); renderAll();
@@ -1612,7 +1710,9 @@ function attachHandlers(tab){
     });
     const fp = document.getElementById('formPrepay');
     if(fp) fp.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(fp);
-      state.remboursementsAnticipes.push({id:uid(), empruntId:fd.get('empruntId'), date:fd.get('date'), montant:Number(fd.get('montant')), mode:fd.get('mode')});
+      const isoP = frToIso(fd.get('date'));
+      if(!isoP){ alert('Date invalide : utilise le format JJ/MM/AAAA.'); return; }
+      state.remboursementsAnticipes.push({id:uid(), empruntId:fd.get('empruntId'), date:isoP, montant:Number(fd.get('montant')), mode:fd.get('mode')});
       saveState(); renderAll();
     };
     document.querySelectorAll('[data-del-prepay]').forEach(b=>b.onclick=()=>{ state.remboursementsAnticipes=state.remboursementsAnticipes.filter(p=>p.id!==b.dataset.delPrepay); saveState(); renderAll(); });
@@ -1623,13 +1723,18 @@ function attachHandlers(tab){
     const hz = document.getElementById('horizonInput'); if(hz) hz.onchange=()=>{ state.projection.horizonAnnees=Number(hz.value); saveState(); renderTab('projections'); };
     const fvr = document.getElementById('formVR');
     if(fvr) fvr.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(fvr);
-      state.projection.versementsRecurrents.push({id:uid(), supportId:fd.get('supportId'), montant:Number(fd.get('montant')), dateFin:fd.get('dateFin')||null, scenario:fd.get('scenario')});
+      const rawFin=(fd.get('dateFin')||'').trim();
+      let isoFin=null;
+      if(rawFin){ isoFin=frToIso(rawFin); if(!isoFin){ alert('Date de fin invalide : utilise le format JJ/MM/AAAA.'); return; } }
+      state.projection.versementsRecurrents.push({id:uid(), supportId:fd.get('supportId'), montant:Number(fd.get('montant')), dateFin:isoFin, scenario:fd.get('scenario')});
       saveState(); renderTab('projections');
     };
     document.querySelectorAll('[data-del-vr]').forEach(b=>b.onclick=()=>{ state.projection.versementsRecurrents=state.projection.versementsRecurrents.filter(v=>v.id!==b.dataset.delVr); saveState(); renderTab('projections'); });
     const frs = document.getElementById('formRS');
     if(frs) frs.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(frs);
-      state.projection.remboursementsSimules.push({id:uid(), empruntId:fd.get('empruntId'), date:fd.get('date'), montant:Number(fd.get('montant')), scenario:fd.get('scenario')});
+      const isoRS = frToIso(fd.get('date'));
+      if(!isoRS){ alert('Date invalide : utilise le format JJ/MM/AAAA.'); return; }
+      state.projection.remboursementsSimules.push({id:uid(), empruntId:fd.get('empruntId'), date:isoRS, montant:Number(fd.get('montant')), scenario:fd.get('scenario')});
       saveState(); renderTab('projections');
     };
     document.querySelectorAll('[data-del-rs]').forEach(b=>b.onclick=()=>{ state.projection.remboursementsSimules=state.projection.remboursementsSimules.filter(r=>r.id!==b.dataset.delRs); saveState(); renderTab('projections'); });
@@ -1642,8 +1747,8 @@ function attachHandlers(tab){
 }
 
 document.getElementById('driveConnectBtn').onclick = ()=>{ googleAccessToken ? disconnectDrive() : connectDrive(); };
+document.querySelectorAll('[data-icon]').forEach(el=>{ if(ICONS[el.dataset.icon]) el.innerHTML = ICONS[el.dataset.icon]; });
 document.getElementById('moreTabBtn').onclick = openMoreSheet;
-document.getElementById('headerMenuBtn').onclick = openHeaderMenu;
 document.getElementById('switchDossierBtn').onclick = ()=>{ if(confirm('Fermer ce dossier et revenir à la liste des dossiers ?')) lockDossier(); };
 document.getElementById('dossierSettingsBtn').onclick = appSecurityModal;
 document.getElementById('lockAppBtn').onclick = ()=>{ if(confirm('Verrouiller l\'application ? Le mot de passe sera de nouveau demandé.')) lockApp(); };
@@ -1683,6 +1788,12 @@ document.getElementById('importFile').onchange = e=>{
     }
   }
   showGate();
+  // le script Google se charge en asynchrone : on attend qu'il soit prêt avant de tenter la reconnexion
+  let tries = 0;
+  const waitGoogle = setInterval(()=>{
+    if(window.google && google.accounts){ clearInterval(waitGoogle); trySilentDriveReconnect(); }
+    else if(++tries>25) clearInterval(waitGoogle);
+  }, 200);
 })();
 </script>
 </body>
