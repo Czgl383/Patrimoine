@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<title>Grand Livre — Suivi patrimonial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#12161A;
+  --panel:#1B2027;
+  --panel-2:#20262E;
+  --line:#2C333C;
+  --paper:#E9E5D8;
+  --paper-dim:#A9A599;
+  --teal:#4F9C82;
+  --teal-dim:#376E5C;
+  --rust:#B5563C;
+  --gold:#C9A65D;
+  --text:#EDEAE1;
+  --text-dim:#9AA0A8;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--ink);color:var(--text);font-family:'Inter',sans-serif;}
+h1,h2,h3{font-family:'Fraunces',serif;font-weight:600;margin:0 0 4px;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+header.top{padding:28px 32px 18px;border-bottom:1px solid var(--line);}
+header.top .brand{font-family:'Fraunces',serif;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:14px;}
+.ledger-row{display:flex;gap:36px;align-items:baseline;flex-wrap:wrap;}
+.ledger-item .label{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim);margin-bottom:4px;}
+.ledger-item .value{font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:600;}
+.ledger-item.net .value{color:var(--gold);font-size:38px;}
+.ledger-item.debt .value{color:var(--rust);}
+.ledger-item.asset .value{color:var(--teal);}
+nav.tabs{display:flex;gap:2px;padding:0 32px;border-bottom:1px solid var(--line);background:var(--panel);overflow-x:auto;}
+nav.tabs button{background:none;border:none;color:var(--text-dim);font-family:'Inter',sans-serif;font-size:13px;font-weight:500;padding:14px 16px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;}
+nav.tabs button.active{color:var(--text);border-bottom-color:var(--gold);}
+main{padding:28px 32px 80px;max-width:1180px;margin:0 auto;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:20px 22px;margin-bottom:20px;}
+.card h3{font-size:16px;color:var(--text);margin-bottom:2px;}
+.card .sub{font-size:12px;color:var(--text-dim);margin-bottom:14px;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);font-weight:500;padding:8px 10px;border-bottom:1px solid var(--line);}
+td{padding:9px 10px;border-bottom:1px solid var(--line);font-family:'IBM Plex Mono',monospace;font-size:13px;}
+td.label-cell{font-family:'Inter',sans-serif;}
+tr:hover{background:var(--panel-2);}
+.pos{color:var(--teal);}
+.neg{color:var(--rust);}
+.pill{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;background:var(--panel-2);border:1px solid var(--line);color:var(--text-dim);}
+form.inline-form{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:18px;padding:16px;background:var(--panel-2);border-radius:6px;border:1px solid var(--line);}
+form.inline-form .field{display:flex;flex-direction:column;gap:4px;}
+form.inline-form label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);}
+input,select{background:var(--ink);border:1px solid var(--line);color:var(--text);padding:7px 9px;border-radius:4px;font-family:'Inter',sans-serif;font-size:13px;min-width:110px;}
+input[type=checkbox]{min-width:auto;}
+button{cursor:pointer;}
+button.btn{background:var(--gold);color:#20180A;border:none;padding:8px 16px;border-radius:4px;font-weight:600;font-size:13px;}
+button.btn.secondary{background:transparent;color:var(--text-dim);border:1px solid var(--line);}
+button.btn-del{background:none;border:none;color:var(--rust);font-size:12px;}
+button.btn-edit{background:none;border:none;color:var(--gold);font-size:12px;margin-right:6px;}
+.helptext{font-size:12px;color:var(--text-dim);line-height:1.5;margin-bottom:14px;}
+.charts-row{display:flex;gap:20px;flex-wrap:wrap;}
+.chart-box{flex:1;min-width:260px;height:260px;}
+.empty{color:var(--text-dim);font-size:13px;padding:20px 0;text-align:center;}
+.scenario-tag{font-size:10px;padding:1px 7px;border-radius:10px;margin-left:6px;}
+.scenario-both{background:var(--panel);color:var(--text-dim);border:1px solid var(--line);}
+.scenario-arb{background:rgba(201,166,93,.15);color:var(--gold);border:1px solid var(--gold);}
+.perf-link{background:none;border:none;padding:0;font:inherit;font-family:'IBM Plex Mono',monospace;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;color:inherit;}
+.perf-link:hover{color:var(--gold);}
+.brand-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.save-status{font-size:11px;letter-spacing:0;text-transform:none;color:var(--text-dim);font-family:'Inter',sans-serif;}
+.header-actions{display:flex;gap:6px;}
+.header-actions .btn{padding:5px 10px;font-size:11px;}
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;}
+
+@media (max-width: 720px){
+  header.top{padding:16px 14px 12px;}
+  header.top .brand{font-size:12px;}
+  .ledger-row{gap:18px;row-gap:10px;}
+  .ledger-item .value{font-size:20px;}
+  .ledger-item.net .value{font-size:24px;}
+  nav.tabs{padding:0 10px;}
+  nav.tabs button{padding:11px 10px;font-size:12px;}
+  main{padding:16px 12px 60px;}
+  .grid2{grid-template-columns:1fr;gap:14px;}
+  .card{padding:14px 14px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .card table{min-width:600px;}
+  form.inline-form{padding:12px;gap:8px;}
+  form.inline-form .field{flex:1 1 100%;}
+  input,select{width:100%;min-width:0;box-sizing:border-box;}
+  form.inline-form button.btn{width:100%;}
+  table{font-size:12px;}
+  th,td{padding:7px 6px;}
+  .charts-row{flex-direction:column;}
+  .chart-box{min-width:0;}
+  #modalContent{padding:16px;width:94%;}
+}
+</style>
+</head>
+<body>
+
+<div id="gateScreen"></div>
+
+<header class="top">
+  <div class="brand-row">
+    <div class="brand">Grand Livre <span id="saveStatus" class="save-status"></span></div>
+    <span class="header-actions">
+      <span id="dossierLabel" class="save-status" style="margin-right:6px"></span>
+      <span id="driveStatus" class="save-status" style="margin-right:6px"></span>
+      <button type="button" id="driveConnectBtn" class="btn secondary">Connecter Google Drive</button>
+      <button type="button" id="dossierSettingsBtn" class="btn secondary">Sécurité</button>
+      <button type="button" id="switchDossierBtn" class="btn secondary">Changer de dossier</button>
+      <button type="button" id="exportBtn" class="btn secondary">Exporter</button>
+      <button type="button" id="importBtn" class="btn secondary">Importer</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none">
+    </span>
+  </div>
+  <div class="ledger-row">
+    <div class="ledger-item net"><div class="label">Patrimoine net</div><div class="value mono" id="hdrNet">—</div></div>
+    <div class="ledger-item asset"><div class="label">Actifs</div><div class="value mono" id="hdrAssets">—</div></div>
+    <div class="ledger-item debt"><div class="label">Dettes</div><div class="value mono" id="hdrDebts">—</div></div>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button data-tab="dashboard" class="active">Vue d'ensemble</button>
+  <button data-tab="supports">Supports</button>
+  <button data-tab="mouvements">Mouvements</button>
+  <button data-tab="actions">Actions</button>
+  <button data-tab="valorisations">Valorisations</button>
+  <button data-tab="emprunts">Emprunts</button>
+  <button data-tab="projections">Projections</button>
+  <button data-tab="offres">Offres</button>
+</nav>
+
+<main id="main"></main>
+
+<div id="modalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;align-items:center;justify-content:center;">
+  <div id="modalContent" style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:24px;max-width:560px;width:90%;max-height:80vh;overflow:auto;"></div>
+</div>
+
+<script>
+// ---------- STORAGE ----------
+let state = null; // défini une fois un dossier ouvert (voir defaultState/openDossier/createDossier)
+let editing = {}; // holds id being edited per entity
+let loaded = false;
+let lastSupportId = null; // pour préremplir le dernier support utilisé en saisie de mouvement
+let dashboardYear = new Date().getFullYear();
+let dashboardGroupByType = false;
+let dashboardShowDetail = true;
+
+function hasPlatformStorage(){ return !!(window.storage && window.storage.get && window.storage.set); }
+function hasLocalStorage(){ try{ const k='__test__'; localStorage.setItem(k,'1'); localStorage.removeItem(k); return true; }catch(e){ return false; } }
+async function storageGetRaw(key){
+  if(hasPlatformStorage()){ const r = await window.storage.get(key, false); return r ? r.value : null; }
+  if(hasLocalStorage()) return localStorage.getItem(key);
+  return null;
+}
+async function storageSetRaw(key, value){
+  if(hasPlatformStorage()) return await window.storage.set(key, value, false);
+  if(hasLocalStorage()){ localStorage.setItem(key, value); return true; }
+  return null;
+}
+async function storageDeleteRaw(key){
+  if(hasPlatformStorage() && window.storage.delete){ try{ await window.storage.delete(key, false); }catch(e){} }
+  else if(hasLocalStorage()){ localStorage.removeItem(key); }
+}
+
+// ---------- CHIFFREMENT (AES-GCM + clé dérivée par mot de passe via PBKDF2) ----------
+function bytesToBase64(bytes){ let s=''; bytes.forEach(b=>s+=String.fromCharCode(b)); return btoa(s); }
+function base64ToBytes(b64){ return Uint8Array.from(atob(b64), c=>c.charCodeAt(0)); }
+function randomSalt(){ return bytesToBase64(crypto.getRandomValues(new Uint8Array(16))); }
+async function deriveKey(password, saltB64){
+  const salt = base64ToBytes(saltB64);
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), {name:'PBKDF2'}, false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations:150000, hash:'SHA-256'}, keyMaterial, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+}
+async function encryptJSON(obj, key){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const enc = new TextEncoder();
+  const ciphertext = await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, enc.encode(JSON.stringify(obj)));
+  return {encrypted:true, iv: bytesToBase64(iv), data: bytesToBase64(new Uint8Array(ciphertext))};
+}
+async function decryptJSON(blob, key){
+  const iv = base64ToBytes(blob.iv);
+  const data = base64ToBytes(blob.data);
+  const dec = await crypto.subtle.decrypt({name:'AES-GCM', iv}, key, data);
+  return JSON.parse(new TextDecoder().decode(dec));
+}
+
+// ---------- DOSSIERS ----------
+let dossierIndex = [];
+let currentDossierId = null;
+let currentDossierKey = null; // CryptoKey en mémoire uniquement, jamais persisté
+function defaultState(){
+  return {
+    supports: [], mouvements: [], valorisations: [], emprunts: [], remboursementsAnticipes: [], actions: [],
+    types: ['Assurance-vie','PEA','Compte-titres','Livret/épargne','Immobilier','SCPI','PER','FIP','PEE','Crypto','Autre'],
+    projection: { horizonAnnees: 10, hypotheses: {}, versementsRecurrents: [], remboursementsSimules: [] }
+  };
+}
+async function loadIndex(){
+  try{ const raw = await storageGetRaw('grandlivre-index'); dossierIndex = raw ? JSON.parse(raw) : []; }
+  catch(e){ dossierIndex = []; }
+}
+// ============================================================
+// SYNCHRONISATION GOOGLE DRIVE
+// Pour l'activer : crée un identifiant OAuth "Client Web" dans Google Cloud Console
+// (API activée : Google Drive API) puis colle-le ci-dessous, à la place du texte REMPLACE_...
+// Voir les instructions détaillées données dans la conversation.
+// ============================================================
+const GOOGLE_CLIENT_ID = 'REMPLACE_PAR_TON_CLIENT_ID.apps.googleusercontent.com';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+let googleAccessToken = null;
+let driveTokenClient = null;
+let driveFileId = null;
+let driveSyncing = false;
+
+function googleConfigured(){ return GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID.indexOf('REMPLACE_PAR')!==0; }
+function initGoogleAuth(){
+  if(!window.google || !google.accounts || driveTokenClient) return;
+  driveTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: DRIVE_SCOPE,
+    callback: async (resp)=>{
+      if(resp.error){ console.error('Google auth error', resp); updateDriveStatusUI('· connexion Google refusée'); return; }
+      googleAccessToken = resp.access_token;
+      await onDriveConnected();
+    }
+  });
+}
+function connectDrive(){
+  if(!googleConfigured()){ alert("La synchronisation Google Drive n'est pas encore configurée dans ce fichier : il manque le Client ID Google (voir les instructions fournies)."); return; }
+  if(!window.google || !google.accounts){ alert("Le service d'authentification Google n'est pas encore chargé — vérifie ta connexion internet et réessaie dans un instant."); return; }
+  if(!driveTokenClient) initGoogleAuth();
+  driveTokenClient.requestAccessToken({prompt: googleAccessToken ? '' : 'consent'});
+}
+function disconnectDrive(){
+  if(googleAccessToken && window.google) google.accounts.oauth2.revoke(googleAccessToken, ()=>{});
+  googleAccessToken = null; driveFileId = null;
+  updateDriveStatusUI();
+}
+function updateDriveStatusUI(customMsg){
+  const el = document.getElementById('driveStatus');
+  const btn = document.getElementById('driveConnectBtn');
+  if(el) el.textContent = customMsg || (googleAccessToken ? '· Drive connecté' : '');
+  if(btn) btn.textContent = googleAccessToken ? 'Déconnecter Drive' : 'Connecter Google Drive';
+}
+
+async function driveFetch(url, options){
+  options = options || {};
+  options.headers = Object.assign({}, options.headers, {Authorization: 'Bearer '+googleAccessToken});
+  const res = await fetch(url, options);
+  if(!res.ok){ const t = await res.text().catch(()=> ''); throw new Error('Drive API '+res.status+' : '+t.slice(0,200)); }
+  return res;
+}
+async function driveFindOrCreateFile(){
+  if(driveFileId) return driveFileId;
+  const q = encodeURIComponent("name='grand-livre-data.json' and trashed=false");
+  const listRes = await driveFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&fields=files(id,name)`);
+  const listJson = await listRes.json();
+  if(listJson.files && listJson.files.length>0){ driveFileId = listJson.files[0].id; return driveFileId; }
+  const createRes = await driveFetch('https://www.googleapis.com/drive/v3/files', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name:'grand-livre-data.json', mimeType:'application/json'})
+  });
+  const createJson = await createRes.json();
+  driveFileId = createJson.id;
+  return driveFileId;
+}
+async function driveReadData(){
+  const id = await driveFindOrCreateFile();
+  const res = await driveFetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`);
+  const text = await res.text();
+  if(!text) return null;
+  try{ return JSON.parse(text); }catch(e){ return null; }
+}
+async function driveWriteData(obj){
+  const id = await driveFindOrCreateFile();
+  await driveFetch(`https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=media`, {
+    method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(obj)
+  });
+}
+async function drivePushAll(){
+  if(!googleAccessToken || driveSyncing) return;
+  driveSyncing = true;
+  try{
+    const dossiers = {};
+    for(const meta of dossierIndex){
+      const raw = await storageGetRaw('grandlivre-dossier-'+meta.id);
+      if(raw) dossiers[meta.id] = raw;
+    }
+    await driveWriteData({index: dossierIndex, dossiers});
+    updateDriveStatusUI('· synchronisé '+new Date().toLocaleTimeString('fr-FR'));
+  }catch(e){ console.error('Erreur envoi Drive', e); updateDriveStatusUI('· échec de synchro Drive : '+e.message); }
+  finally{ driveSyncing = false; }
+}
+async function driveSyncPull(){
+  const remote = await driveReadData();
+  if(remote){
+    dossierIndex = remote.index || [];
+    for(const id in (remote.dossiers||{})) await storageSetRaw('grandlivre-dossier-'+id, remote.dossiers[id]);
+    await storageSetRaw('grandlivre-index', JSON.stringify(dossierIndex));
+  }
+}
+async function onDriveConnected(){
+  updateDriveStatusUI('· synchronisation…');
+  try{
+    await driveSyncPull();
+    updateDriveStatusUI();
+    if(document.getElementById('gateScreen').style.display!=='none') renderGate();
+  }catch(e){ console.error('Erreur de synchronisation Drive', e); alert('Erreur de synchronisation avec Drive : '+e.message); }
+}
+
+async function saveIndex(){
+  await storageSetRaw('grandlivre-index', JSON.stringify(dossierIndex));
+  if(googleAccessToken) drivePushAll();
+}
+async function persistCurrentDossier(){
+  const meta = currentDossierMeta();
+  let payload;
+  if(meta && meta.hasPassword && currentDossierKey) payload = JSON.stringify(await encryptJSON(state, currentDossierKey));
+  else payload = JSON.stringify(state);
+  const r = await storageSetRaw('grandlivre-dossier-'+currentDossierId, payload);
+  if(googleAccessToken) drivePushAll();
+  return r;
+}
+function currentDossierMeta(){ return dossierIndex.find(d=>d.id===currentDossierId); }
+async function createDossier(nom, password){
+  const id = uid()+uid();
+  const meta = {id, nom, hasPassword: !!password, salt: password ? randomSalt() : null, createdAt: new Date().toISOString()};
+  dossierIndex.push(meta);
+  await saveIndex();
+  state = defaultState();
+  currentDossierId = id;
+  currentDossierKey = password ? await deriveKey(password, meta.salt) : null;
+  await persistCurrentDossier();
+  enterApp();
+}
+async function openDossier(id, password){
+  const meta = dossierIndex.find(d=>d.id===id);
+  if(!meta) throw new Error('Dossier introuvable');
+  const raw = await storageGetRaw('grandlivre-dossier-'+id);
+  if(!raw){ state = defaultState(); currentDossierKey = null; }
+  else{
+    const parsed = JSON.parse(raw);
+    if(parsed.encrypted){
+      if(!password) throw new Error('MOT_DE_PASSE_REQUIS');
+      const key = await deriveKey(password, meta.salt);
+      try{ state = Object.assign(defaultState(), await decryptJSON(parsed, key)); currentDossierKey = key; }
+      catch(e){ throw new Error('MOT_DE_PASSE_INCORRECT'); }
+    } else { state = Object.assign(defaultState(), parsed); currentDossierKey = null; }
+  }
+  currentDossierId = id;
+  enterApp();
+}
+function lockDossier(){ currentDossierId = null; currentDossierKey = null; showGate(); }
+
+async function saveState(attempt){
+  attempt = attempt || 1;
+  const statusEl = document.getElementById('saveStatus');
+  if(!currentDossierId) return;
+  if(!hasPlatformStorage() && !hasLocalStorage()){ if(statusEl) statusEl.textContent = '· aucun stockage disponible : pense à Exporter'; return; }
+  if(statusEl) statusEl.textContent = '· sauvegarde…';
+  try{
+    const r = await persistCurrentDossier();
+    if(hasPlatformStorage()) statusEl && (statusEl.textContent = r ? '· enregistré '+new Date().toLocaleTimeString('fr-FR') : '· échec de sauvegarde (réponse vide)');
+    else statusEl && (statusEl.textContent = '· enregistré localement '+new Date().toLocaleTimeString('fr-FR'));
+  }catch(e){
+    console.error('storage error', e);
+    if(attempt<2){ setTimeout(()=>saveState(attempt+1), 1200); return; }
+    if(statusEl) statusEl.innerHTML = '· échec de sauvegarde : '+e.message+' <button type="button" id="retrySaveBtn" style="background:none;border:1px solid var(--line);color:var(--gold);border-radius:3px;padding:0 6px;font-size:11px;cursor:pointer;margin-left:4px">Réessayer</button>';
+    const rb = document.getElementById('retrySaveBtn'); if(rb) rb.onclick = ()=>saveState();
+  }
+}
+function uid(){ return Math.random().toString(36).slice(2,10); }
+
+// ---------- CONSTANTS ----------
+const DISPOS = ['Liquide','Disponible (fiscalité dégressive)','Bloqué à échéance connue'];
+const fmtEUR = n => (n===null||n===undefined||isNaN(n)) ? '—' : n.toLocaleString('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0});
+const fmtPct = n => (n===null||n===undefined||isNaN(n)) ? '—' : (n*100).toLocaleString('fr-FR',{maximumFractionDigits:1})+' %';
+const fmtDate = d => new Date(d).toLocaleDateString('fr-FR');
+function isoToFr(iso){ if(!iso) return ''; const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
+function frToIso(fr){ const mch = (fr||'').trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/); if(!mch) return null; return `${mch[3]}-${mch[2]}-${mch[1]}`; }
+function addMonths(dateStr, n){ const d=new Date(dateStr); d.setMonth(d.getMonth()+n); return d; }
+function daysBetween(a,b){ return (new Date(b)-new Date(a))/86400000; }
+
+// ---------- XIRR ----------
+function xirr(flows){
+  // flows: [{date, amount}]
+  if(flows.length<2) return null;
+  const d0 = new Date(flows[0].date);
+  const years = flows.map(f=> daysBetween(d0,f.date)/365);
+  const npv = r => flows.reduce((s,f,i)=> s + f.amount/Math.pow(1+r,years[i]), 0);
+  const dnpv = r => flows.reduce((s,f,i)=> s - years[i]*f.amount/Math.pow(1+r,years[i]+1), 0);
+  let r = 0.1;
+  for(let i=0;i<80;i++){
+    const f=npv(r), d=dnpv(r);
+    if(Math.abs(d)<1e-9) break;
+    const nr = r - f/d;
+    if(!isFinite(nr)) break;
+    if(Math.abs(nr-r)<1e-7){ r=nr; break; }
+    r=nr;
+    if(r<-0.99) r=-0.99;
+  }
+  return isFinite(r) ? r : null;
+}
+
+function actionsValueForSupport(supportId){
+  const acts = state.actions.filter(a=>a.supportId===supportId);
+  if(acts.length===0) return null;
+  return acts.reduce((s,a)=> s + a.quantite*a.coursActuel, 0);
+}
+function latestValorisation(supportId, beforeDate){
+  const today = new Date().toISOString().slice(0,10);
+  if(!beforeDate || beforeDate>=today){
+    const av = actionsValueForSupport(supportId);
+    if(av!==null) return {date: today, value: av, fromActions: true};
+  }
+  const list = state.valorisations.filter(v=>v.supportId===supportId && (!beforeDate || v.date<=beforeDate)).sort((a,b)=>a.date<b.date?1:-1);
+  return list[0] || null;
+}
+// Valeur affichée : la vraie valorisation si elle existe, sinon une estimation basée sur le net des mouvements
+// (utile tant qu'aucun relevé n'a encore été saisi, mais sans performance calculable dans ce cas).
+function displayValue(supportId, untilDate){
+  const val = latestValorisation(supportId, untilDate||null);
+  if(val) return {value: val.value, estimated:false, fromActions: !!val.fromActions};
+  const ms = state.mouvements.filter(m=>m.supportId===supportId && (!untilDate || effectiveDate(m)<=untilDate));
+  if(ms.length===0) return null;
+  const net = ms.reduce((s,m)=> s + (m.type==='retrait'? -m.montant : m.montant), 0); // versement et intérêts perçus augmentent la valeur estimée
+  return {value: net, estimated:true};
+}
+function firstValorisationAfter(supportId, date){
+  const list = state.valorisations.filter(v=>v.supportId===supportId && v.date>=date).sort((a,b)=>a.date<b.date?-1:1);
+  return list[0] || null;
+}
+
+// Un mouvement d'intérêts perçus est rattaché économiquement à l'année de rattachement
+// (même si le paiement effectif a lieu en N+1) : on utilise le 31/12 de cette année comme date de flux.
+function effectiveDate(m){
+  return (m.type==='interet' && m.anneeRattachement) ? `${m.anneeRattachement}-12-31` : m.date;
+}
+function investorFlow(m){
+  // montant est toujours saisi en valeur positive ; le sens dépend du type
+  return m.type==='versement' ? -m.montant : m.montant; // retrait ou intérêt = argent perçu par l'investisseur
+}
+function interestReceived(supportId, year){
+  return state.mouvements.filter(m=>m.supportId===supportId && m.type==='interet' && m.anneeRattachement===year).reduce((s,m)=>s+m.montant,0);
+}
+function terminalValueForSupport(supportId, untilDate){
+  const realVal = latestValorisation(supportId, untilDate||null);
+  if(realVal) return {date: realVal.date, value: realVal.value, label: 'Valorisation au '+fmtDate(realVal.date)};
+  const fb = displayValue(supportId, untilDate);
+  if(!fb) return null;
+  const d = untilDate || new Date().toISOString().slice(0,10);
+  return {date: d, value: fb.value, label: 'Valeur estimée (net des mouvements) au '+fmtDate(d)};
+}
+function startValueForSupport(supportId, sinceDate){
+  const hasReal = state.valorisations.some(v=>v.supportId===supportId);
+  const startReal = latestValorisation(supportId, sinceDate);
+  if(startReal && startReal.date < sinceDate) return {value: startReal.value, label: 'Valeur de départ (valorisation du '+fmtDate(startReal.date)+')'};
+  if(!hasReal){ const sf = displayValue(supportId, sinceDate); return {value: sf?sf.value:0, label: 'Valeur de départ estimée'}; }
+  return null;
+}
+function computeXIRRDetail(supportId, sinceDate, untilDate){
+  return groupXIRRDetail([supportId], sinceDate, untilDate);
+}
+// Calcule un XIRR agrégé sur un ensemble de supports (portefeuille entier ou un groupe/type donné)
+function groupXIRRDetail(supportIds, sinceDate, untilDate){
+  let flows = [];
+  let startTotal = 0, hasStart = false;
+  let terminalTotal = 0;
+  const multi = supportIds.length>1;
+  supportIds.forEach(id=>{
+    const sup = state.supports.find(s=>s.id===id);
+    const suffix = multi && sup ? ' — '+sup.nom : '';
+    if(sinceDate){
+      const sv = startValueForSupport(id, sinceDate);
+      if(sv){ startTotal += sv.value; hasStart = true; }
+    }
+    const hasRealVal = state.valorisations.some(v=>v.supportId===id);
+    state.mouvements.filter(m=>{
+      if(m.supportId!==id) return false;
+      if(!hasRealVal && m.type==='interet') return false;
+      const ed = effectiveDate(m);
+      if(sinceDate && ed<sinceDate) return false;
+      if(untilDate && ed>untilDate) return false;
+      return true;
+    }).forEach(m=>{
+      const lbl = (m.type==='versement' ? 'Versement' : m.type==='retrait' ? 'Retrait' : `Intérêts perçus (rattachés ${m.anneeRattachement})`)+suffix;
+      flows.push({date: effectiveDate(m), amount: investorFlow(m), label: lbl});
+    });
+    const tv = terminalValueForSupport(id, untilDate);
+    if(tv) terminalTotal += tv.value;
+  });
+  if(sinceDate && hasStart) flows.push({date: sinceDate, amount: -startTotal, label: 'Valeur de départ'+(multi?' (ensemble)':'')});
+  if(flows.length===0) return {flows:[], rate:null};
+  const terminalDate = untilDate || new Date().toISOString().slice(0,10);
+  flows.push({date: terminalDate, amount: terminalTotal, label: 'Valeur au '+fmtDate(terminalDate)+(multi?' (ensemble)':'')});
+  flows.sort((a,b)=>a.date<b.date?-1:1);
+  const nonZero = flows.filter(f=>f.amount!==0);
+  const rate = (nonZero.length<2 || nonZero.every(f=>f.amount<0) || nonZero.every(f=>f.amount>0)) ? null : xirr(flows);
+  return {flows, rate};
+}
+function supportXIRR(supportId, sinceDate, untilDate){
+  return computeXIRRDetail(supportId, sinceDate, untilDate).rate;
+}
+
+// ---------- EMPRUNTS / AMORTISSEMENT ----------
+function loanSchedule(emprunt){
+  const rate = emprunt.taux/100/12;
+  const n = emprunt.duree;
+  let capital = emprunt.capital;
+  let mensualite = emprunt.type==='constant' ? (rate===0? capital/n : capital*rate/(1-Math.pow(1+rate,-n))) : capital*rate;
+  const prepays = state.remboursementsAnticipes.filter(r=>r.empruntId===emprunt.id);
+  const schedule = [];
+  let date = new Date(emprunt.dateDebut);
+  for(let m=1; m<=n && capital>0.5; m++){
+    date = addMonths(emprunt.dateDebut, m);
+    const iso = date.toISOString().slice(0,10);
+    const interet = capital*rate;
+    let principal = emprunt.type==='constant' ? (mensualite-interet) : 0;
+    if(emprunt.type==='infine' && m===n) principal = capital;
+    const monthPrepays = prepays.filter(p=> p.date.slice(0,7)===iso.slice(0,7));
+    const prepaySum = monthPrepays.reduce((s,p)=>s+p.montant,0);
+    capital = Math.max(0, capital - principal - prepaySum);
+    // si l'un des remboursements de ce mois demande une réduction de mensualité, on la recalcule sur la durée restante
+    if(emprunt.type==='constant' && prepaySum>0 && monthPrepays.some(p=>p.mode==='mensualite') && capital>0){
+      const remaining = n-m;
+      if(remaining>0) mensualite = rate===0? capital/remaining : capital*rate/(1-Math.pow(1+rate,-remaining));
+    }
+    schedule.push({date: iso, capitalRestant: capital, interet, principal: principal+prepaySum});
+  }
+  return schedule;
+}
+function loanRemainingToday(emprunt){
+  const sched = loanSchedule(emprunt);
+  const today = new Date().toISOString().slice(0,10);
+  let last = emprunt.capital;
+  for(const s of sched){ if(s.date<=today) last = s.capitalRestant; else break; }
+  return last;
+}
+function loanMensualiteInitiale(emprunt){
+  const rate = emprunt.taux/100/12, n = emprunt.duree;
+  return emprunt.type==='constant' ? (rate===0? emprunt.capital/n : emprunt.capital*rate/(1-Math.pow(1+rate,-n))) : emprunt.capital*rate;
+}
+function loanInsuranceMonthly(emprunt){
+  if(!emprunt.assuranceValeur) return 0;
+  return emprunt.assuranceType==='montant' ? emprunt.assuranceValeur : emprunt.capital*(emprunt.assuranceValeur/100)/12;
+}
+function loanInterestSummary(emprunt){
+  const sched = loanSchedule(emprunt);
+  const today = new Date().toISOString().slice(0,10);
+  const assuranceMensuelle = loanInsuranceMonthly(emprunt);
+  let interetsPayes=0, interetsRestants=0, assurancePayee=0, assuranceRestante=0;
+  sched.forEach(s=>{
+    if(s.date<=today){ interetsPayes+=s.interet; assurancePayee+=assuranceMensuelle; }
+    else{ interetsRestants+=s.interet; assuranceRestante+=assuranceMensuelle; }
+  });
+  return {interetsPayes, interetsRestants, assurancePayee, assuranceRestante};
+}
+
+// ---------- COMPUTED TOTALS ----------
+function totalAssets(){
+  return state.supports.reduce((s,sup)=>{ const v=displayValue(sup.id,null); return s+(v?v.value:0); },0);
+}
+function totalDebts(){
+  return state.emprunts.reduce((s,e)=>s+loanRemainingToday(e),0);
+}
+
+// ---------- RENDER ----------
+function renderHeader(){
+  const a=totalAssets(), d=totalDebts();
+  document.getElementById('hdrAssets').textContent = fmtEUR(a);
+  document.getElementById('hdrDebts').textContent = fmtEUR(d);
+  document.getElementById('hdrNet').textContent = fmtEUR(a-d);
+}
+
+function tpl(strings, ...vals){ return strings.reduce((acc,s,i)=>acc+s+(vals[i]!==undefined?vals[i]:''),''); }
+const CHART_PALETTE = ['#4F9C82','#C9A65D','#B5563C','#6E8FA8','#8B7EC8','#A9A599','#376E5C','#D6B36A'];
+function svgDonut(data, size){
+  size = size || 170;
+  const strokeWidth = size*0.16;
+  const entries = Object.entries(data).filter(([,v])=>v>0);
+  const total = entries.reduce((s,[,v])=>s+v,0);
+  if(total<=0) return '<div class="empty">Pas encore de valeur à répartir.</div>';
+  const r = (size-strokeWidth)/2;
+  const c = 2*Math.PI*r;
+  let offset = 0;
+  const segments = entries.map(([k,v],i)=>{
+    const dash = (v/total)*c;
+    const seg = `<circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${CHART_PALETTE[i%CHART_PALETTE.length]}" stroke-width="${strokeWidth}" stroke-dasharray="${dash} ${c-dash}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${size/2} ${size/2})"/>`;
+    offset += dash;
+    return seg;
+  }).join('');
+  const legend = entries.map(([k,v],i)=>`<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);margin-top:5px"><span style="width:9px;height:9px;border-radius:2px;background:${CHART_PALETTE[i%CHART_PALETTE.length]};display:inline-block;flex-shrink:0"></span>${k} — ${fmtEUR(v)}</div>`).join('');
+  return `<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${segments}</svg>
+    <div>${legend}</div>
+  </div>`;
+}
+function svgLineChart(seriesList, width, height){
+  width = width||720; height = height||280;
+  const padding = 46;
+  const n = seriesList[0].points.length;
+  const allY = seriesList.flatMap(s=>s.points.map(p=>p.y));
+  let minY = Math.min(0, ...allY), maxY = Math.max(...allY);
+  if(minY===maxY){ minY-=1; maxY+=1; }
+  const xFor = i => padding + (n<=1?0:(i/(n-1))*(width-2*padding));
+  const yFor = v => height-padding - ((v-minY)/(maxY-minY))*(height-2*padding);
+  const gridLines = [0,0.25,0.5,0.75,1].map(f=>{
+    const v = minY + f*(maxY-minY);
+    const y = yFor(v);
+    return `<line x1="${padding}" y1="${y}" x2="${width-padding}" y2="${y}" stroke="#2C333C" stroke-width="1"/><text x="${padding-8}" y="${y+4}" text-anchor="end" font-size="10" fill="#9AA0A8">${fmtEUR(v)}</text>`;
+  }).join('');
+  const step = Math.max(1, Math.round(n/6));
+  const xLabels = seriesList[0].points.map((p,i)=> i%step===0 ? `<text x="${xFor(i)}" y="${height-padding+16}" text-anchor="middle" font-size="10" fill="#9AA0A8">${p.label}</text>` : '').join('');
+  const lines = seriesList.map(s=>{
+    const d = s.points.map((p,i)=> (i===0?'M':'L')+xFor(i).toFixed(1)+','+yFor(p.y).toFixed(1)).join(' ');
+    return `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.5" ${s.dash?`stroke-dasharray="${s.dash}"`:''}/>`;
+  }).join('');
+  const legend = seriesList.map(s=>`<span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);margin-right:16px"><span style="width:16px;height:2.5px;background:${s.color};display:inline-block"></span>${s.label}</span>`).join('');
+  return `<div>${legend}</div><svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}">${gridLines}${lines}${xLabels}</svg>`;
+}
+
+function renderAll(){
+  renderHeader();
+  const active = document.querySelector('nav.tabs button.active').dataset.tab;
+  renderTab(active);
+}
+
+function renderTab(tab){
+  const main = document.getElementById('main');
+  if(tab==='dashboard') main.innerHTML = viewDashboard();
+  if(tab==='supports') main.innerHTML = viewSupports();
+  if(tab==='mouvements') main.innerHTML = viewMouvements();
+  if(tab==='actions') main.innerHTML = viewActions();
+  if(tab==='valorisations') main.innerHTML = viewValorisations();
+  if(tab==='emprunts') main.innerHTML = viewEmprunts();
+  if(tab==='projections') main.innerHTML = viewProjections();
+  if(tab==='offres') main.innerHTML = viewOffres();
+  attachHandlers(tab);
+}
+
+function openXIRRDetail(supportIds, sinceDate, untilDate, title){
+  const {flows, rate} = groupXIRRDetail(supportIds, sinceDate||null, untilDate||null);
+  const rows = flows.map(f=>`<tr><td>${fmtDate(f.date)}</td><td class="label-cell">${f.label||''}</td><td class="${f.amount<0?'neg':'pos'}">${fmtEUR(f.amount)}</td></tr>`).join('');
+  document.getElementById('modalContent').innerHTML = `
+    <h3>${title}</h3>
+    <div class="sub">Flux utilisés pour le calcul du taux annualisé (XIRR)</div>
+    ${flows.length? `<table><thead><tr><th>Date</th><th>Origine</th><th>Flux</th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">Pas assez de données pour calculer cette performance.</div>'}
+    <div style="margin-top:16px;font-size:24px" class="mono ${rate>0?'pos':rate<0?'neg':''}">${fmtPct(rate)}</div>
+    <button class="btn secondary" type="button" id="closeModalBtn" style="margin-top:16px">Fermer</button>
+  `;
+  const overlay = document.getElementById('modalOverlay');
+  overlay.style.display = 'flex';
+  document.getElementById('closeModalBtn').onclick = closeModal;
+  overlay.onclick = e=>{ if(e.target===overlay) closeModal(); };
+}
+function closeModal(){ document.getElementById('modalOverlay').style.display = 'none'; }
+function showModal(html){
+  document.getElementById('modalContent').innerHTML = html;
+  const overlay = document.getElementById('modalOverlay');
+  overlay.style.display = 'flex';
+  overlay.onclick = e=>{ if(e.target===overlay) closeModal(); };
+}
+
+// ---------- ÉCRAN DOSSIERS ----------
+function showGate(){
+  document.getElementById('gateScreen').style.display = 'block';
+  document.querySelector('header.top').style.display = 'none';
+  document.querySelector('nav.tabs').style.display = 'none';
+  document.getElementById('main').style.display = 'none';
+  renderGate();
+}
+function enterApp(){
+  document.getElementById('gateScreen').style.display = 'none';
+  document.querySelector('header.top').style.display = 'block';
+  document.querySelector('nav.tabs').style.display = 'flex';
+  document.getElementById('main').style.display = 'block';
+  const meta = currentDossierMeta();
+  const lbl = document.getElementById('dossierLabel');
+  if(lbl) lbl.textContent = meta ? (meta.hasPassword?'🔒 ':'')+meta.nom : '';
+  updateDriveStatusUI();
+  editing = {};
+  loaded = true;
+  renderAll();
+}
+function renderGate(){
+  const list = dossierIndex.map(d=>`
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <div><h3 style="margin-bottom:2px">${d.hasPassword?'🔒 ':''}${d.nom}</h3><div class="sub" style="margin:0">Créé le ${fmtDate(d.createdAt)}</div></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn" type="button" data-open="${d.id}">Ouvrir</button>
+        <button class="btn-del" type="button" data-del-dossier="${d.id}">Suppr.</button>
+      </div>
+    </div>`).join('');
+  document.getElementById('gateScreen').innerHTML = `
+    <div style="max-width:540px;margin:60px auto;padding:0 20px">
+      <div class="brand" style="margin-bottom:8px;font-size:22px">Grand Livre</div>
+      <div class="sub" style="margin-bottom:16px">Un dossier par personne ou par portefeuille suivi — chacun avec ses propres données, protégeable par mot de passe.</div>
+      <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px">
+        <div><h3 style="margin-bottom:2px">Synchronisation</h3><div class="sub" style="margin:0" id="gateDriveStatus">${googleAccessToken? 'Connecté à Google Drive' : "Connecte-toi pour récupérer tes dossiers sur cet appareil"}</div></div>
+        <button class="btn secondary" type="button" id="gateDriveBtn">${googleAccessToken? 'Déconnecter Drive':'Connecter Google Drive'}</button>
+      </div>
+      ${dossierIndex.length? `<h3 style="margin-bottom:14px">Tes dossiers</h3>${list}` : '<div class="empty">Aucun dossier pour le moment.</div>'}
+      <button class="btn" type="button" id="newDossierBtn" style="margin-top:16px">+ Nouveau dossier</button>
+    </div>`;
+  document.getElementById('gateDriveBtn').onclick = ()=>{ googleAccessToken ? disconnectDrive() : connectDrive(); renderGate(); };
+  document.querySelectorAll('[data-open]').forEach(b=>b.onclick=async ()=>{
+    const meta = dossierIndex.find(d=>d.id===b.dataset.open);
+    if(meta.hasPassword) promptPasswordModal(meta);
+    else{ try{ await openDossier(meta.id, null); }catch(err){ alert("Erreur à l'ouverture : "+err.message); } }
+  });
+  document.querySelectorAll('[data-del-dossier]').forEach(b=>b.onclick=async ()=>{
+    const meta = dossierIndex.find(d=>d.id===b.dataset.delDossier);
+    if(!confirm(`Supprimer définitivement le dossier "${meta.nom}" et toutes ses données ? Cette action est irréversible.`)) return;
+    dossierIndex = dossierIndex.filter(d=>d.id!==meta.id);
+    await saveIndex();
+    await storageDeleteRaw('grandlivre-dossier-'+meta.id);
+    renderGate();
+  });
+  document.getElementById('newDossierBtn').onclick = newDossierModal;
+}
+function promptPasswordModal(meta){
+  showModal(`
+    <h3>Dossier protégé — ${meta.nom}</h3>
+    <div class="sub">Saisis le mot de passe pour l'ouvrir.</div>
+    <form id="pwForm" class="inline-form" style="margin-top:14px">
+      <div class="field" style="flex:1 1 100%"><label>Mot de passe</label><input type="password" name="password" required autofocus></div>
+      <button class="btn" type="submit">Déverrouiller</button>
+      <button class="btn secondary" type="button" id="pwCancel">Annuler</button>
+    </form>
+    <div id="pwError" class="neg" style="margin-top:10px;font-size:13px"></div>
+  `);
+  document.getElementById('pwCancel').onclick = closeModal;
+  document.getElementById('pwForm').onsubmit = async e=>{
+    e.preventDefault();
+    const pwd = new FormData(e.target).get('password');
+    try{ await openDossier(meta.id, pwd); closeModal(); }
+    catch(err){ document.getElementById('pwError').textContent = err.message==='MOT_DE_PASSE_INCORRECT' ? 'Mot de passe incorrect.' : 'Erreur : '+err.message; }
+  };
+}
+function newDossierModal(){
+  showModal(`
+    <h3>Nouveau dossier</h3>
+    <form id="newDossierForm" class="inline-form" style="margin-top:14px">
+      <div class="field" style="flex:1 1 100%"><label>Nom (ex. un prénom, "Perso", "Parents"…)</label><input name="nom" required autofocus></div>
+      <div class="field" style="flex:1 1 100%"><label style="display:flex;align-items:center;gap:6px;font-size:12px;text-transform:none;letter-spacing:0"><input type="checkbox" id="pwToggle"> Protéger par mot de passe</label></div>
+      <div class="field" style="flex:1 1 100%;display:none" id="pwFields1"><label>Mot de passe</label><input type="password" name="password"></div>
+      <div class="field" style="flex:1 1 100%;display:none" id="pwFields2"><label>Confirmer le mot de passe</label><input type="password" name="password2"></div>
+      <button class="btn" type="submit">Créer</button>
+      <button class="btn secondary" type="button" id="newDossierCancel">Annuler</button>
+    </form>
+    <div id="newDossierError" class="neg" style="margin-top:10px;font-size:13px"></div>
+  `);
+  document.getElementById('pwToggle').onchange = e=>{
+    document.getElementById('pwFields1').style.display = e.target.checked?'':'none';
+    document.getElementById('pwFields2').style.display = e.target.checked?'':'none';
+  };
+  document.getElementById('newDossierCancel').onclick = closeModal;
+  document.getElementById('newDossierForm').onsubmit = async e=>{
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const nom = (fd.get('nom')||'').trim();
+    const wantsPwd = document.getElementById('pwToggle').checked;
+    const p1 = fd.get('password'), p2 = fd.get('password2');
+    if(wantsPwd){
+      if(!p1 || p1.length<4){ document.getElementById('newDossierError').textContent='Mot de passe trop court (4 caractères minimum).'; return; }
+      if(p1!==p2){ document.getElementById('newDossierError').textContent='Les deux mots de passe ne correspondent pas.'; return; }
+    }
+    await createDossier(nom, wantsPwd?p1:null);
+    closeModal();
+  };
+}
+function securityModal(){
+  const meta = currentDossierMeta();
+  if(!meta) return;
+  showModal(`
+    <h3>Paramètres du dossier</h3>
+    <div class="sub">${meta.hasPassword? 'Ce dossier est actuellement protégé par mot de passe.' : "Ce dossier n'est pas protégé."}</div>
+    <form id="secForm" class="inline-form" style="margin-top:14px">
+      <div class="field" style="flex:1 1 100%"><label>Nom du dossier</label><input name="nom" value="${meta.nom}" required></div>
+      <div class="field" style="flex:1 1 100%"><label>${meta.hasPassword? 'Nouveau mot de passe (laisser vide pour retirer la protection)' : 'Définir un mot de passe (optionnel)'}</label><input type="password" name="password"></div>
+      <div class="field" style="flex:1 1 100%"><label>Confirmer le mot de passe</label><input type="password" name="password2"></div>
+      <button class="btn" type="submit">Enregistrer</button>
+      <button class="btn secondary" type="button" id="secCancel">Annuler</button>
+    </form>
+    <div id="secError" class="neg" style="margin-top:10px;font-size:13px"></div>
+  `);
+  document.getElementById('secCancel').onclick = closeModal;
+  document.getElementById('secForm').onsubmit = async e=>{
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const nom = (fd.get('nom')||'').trim();
+    const p1 = fd.get('password'), p2 = fd.get('password2');
+    if(p1 && p1!==p2){ document.getElementById('secError').textContent='Les mots de passe ne correspondent pas.'; return; }
+    if(p1 && p1.length<4){ document.getElementById('secError').textContent='Mot de passe trop court (4 caractères minimum).'; return; }
+    meta.nom = nom || meta.nom;
+    if(p1){ meta.hasPassword = true; meta.salt = randomSalt(); currentDossierKey = await deriveKey(p1, meta.salt); }
+    else if(meta.hasPassword){ meta.hasPassword = false; meta.salt = null; currentDossierKey = null; }
+    await saveIndex();
+    await persistCurrentDossier();
+    closeModal();
+    const lbl = document.getElementById('dossierLabel'); if(lbl) lbl.textContent = (meta.hasPassword?'🔒 ':'')+meta.nom;
+  };
+}
+
+// ---- DASHBOARD ----
+function availableYears(){
+  const years = new Set([new Date().getFullYear()]);
+  state.mouvements.forEach(m=> years.add(new Date(effectiveDate(m)).getFullYear()));
+  state.valorisations.forEach(v=> years.add(new Date(v.date).getFullYear()));
+  return Array.from(years).sort((a,b)=>b-a);
+}
+function viewDashboard(){
+  if(state.supports.length===0) return `<div class="card"><div class="empty">Ajoute d'abord un support dans l'onglet "Supports" pour voir ta vue d'ensemble.</div></div>`;
+  const years = availableYears();
+  if(!years.includes(dashboardYear)) dashboardYear = years[0];
+  const sinceDate = `${dashboardYear}-01-01`;
+  const isCurrentYear = dashboardYear===new Date().getFullYear();
+  const untilDate = isCurrentYear ? null : `${dashboardYear}-12-31`;
+  const yearSelect = `<select id="dashboardYearSel">${years.map(y=>`<option value="${y}" ${y===dashboardYear?'selected':''}>${y}</option>`).join('')}</select>`;
+  const allIds = state.supports.map(s=>s.id);
+  const portAnnuel = groupXIRRDetail(allIds, sinceDate, untilDate);
+  const portGlobal = groupXIRRDetail(allIds, null, null);
+  const perfBtn = (det, title)=> det.rate===null ? '<span class="pill">pas assez de données</span>' : `<button class="perf-link" data-ids="${allIds.join(',')}" data-since="${det===portAnnuel?sinceDate:''}" data-until="${det===portAnnuel?(untilDate||''):''}" data-title="${title}">${fmtPct(det.rate)}</button>`;
+
+  function supportRow(s){
+    const val = displayValue(s.id, untilDate);
+    const xAnnuel = supportXIRR(s.id, sinceDate, untilDate);
+    const xGlobal = supportXIRR(s.id, null, null);
+    const tauxAn = s.tauxAnnonces ? s.tauxAnnonces[dashboardYear] : null;
+    let controlCell = '—';
+    if(tauxAn!==undefined && tauxAn!==null){
+      const base = latestValorisation(s.id, sinceDate);
+      const rendementPercu = base && base.value ? interestReceived(s.id, dashboardYear)/base.value : null;
+      controlCell = `${fmtPct(rendementPercu)} perçu / ${tauxAn}% annoncé`;
+    }
+    const perfCell = xAnnuel===null ? '<span class="pill">pas assez de données</span>' : `<button class="perf-link" data-ids="${s.id}" data-since="${sinceDate}" data-until="${untilDate||''}" data-title="Performance ${dashboardYear}">${fmtPct(xAnnuel)}</button>`;
+    const perfClass = xAnnuel>0?'pos':xAnnuel<0?'neg':'';
+    return `<tr>
+      <td class="label-cell">${s.nom}</td>
+      <td class="label-cell"><span class="pill">${s.type}</span></td>
+      <td class="label-cell">${s.disponibilite}${s.dateDisponibilite?` <span class="pill">dispo. ${fmtDate(s.dateDisponibilite)}</span>`:''}</td>
+      <td>${val?fmtEUR(val.value):'—'}${val&&val.estimated?' <span class="pill">estimé</span>':''}${val&&val.fromActions?' <span class="pill">via actions</span>':''}</td>
+      <td class="${perfClass}">${perfCell}</td>
+      <td class="${xGlobal>0?'pos':xGlobal<0?'neg':''}">${xGlobal===null?'<span class="pill">pas assez de données</span>':`<button class="perf-link" data-ids="${s.id}" data-since="" data-until="" data-title="Performance globale">${fmtPct(xGlobal)}</button>`}</td>
+      <td class="label-cell" style="font-size:11px">${controlCell}</td>
+    </tr>`;
+  }
+
+  let tableBody;
+  if(dashboardGroupByType){
+    const typesPresent = Array.from(new Set(state.supports.map(s=>s.type)));
+    tableBody = typesPresent.map(t=>{
+      const ids = state.supports.filter(s=>s.type===t).map(s=>s.id);
+      const val = ids.reduce((sum,id)=>{ const v=displayValue(id, untilDate); return sum+(v?v.value:0); },0);
+      const gAnnuel = groupXIRRDetail(ids, sinceDate, untilDate);
+      const gGlobal = groupXIRRDetail(ids, null, null);
+      const groupRow = `<tr style="background:var(--panel-2)">
+        <td class="label-cell" style="font-weight:600">${t}</td>
+        <td class="label-cell">${ids.length} support${ids.length>1?'s':''}</td>
+        <td></td>
+        <td>${fmtEUR(val)}</td>
+        <td class="${gAnnuel.rate>0?'pos':gAnnuel.rate<0?'neg':''}">${gAnnuel.rate===null?'<span class="pill">pas assez de données</span>':`<button class="perf-link" data-ids="${ids.join(',')}" data-since="${sinceDate}" data-until="${untilDate||''}" data-title="Performance ${dashboardYear} — ${t}">${fmtPct(gAnnuel.rate)}</button>`}</td>
+        <td class="${gGlobal.rate>0?'pos':gGlobal.rate<0?'neg':''}">${gGlobal.rate===null?'<span class="pill">pas assez de données</span>':`<button class="perf-link" data-ids="${ids.join(',')}" data-since="" data-until="" data-title="Performance globale — ${t}">${fmtPct(gGlobal.rate)}</button>`}</td>
+        <td></td>
+      </tr>`;
+      const detailRows = dashboardShowDetail ? state.supports.filter(s=>s.type===t).map(s=>supportRow(s).replace('<td class="label-cell">', '<td class="label-cell" style="padding-left:26px;color:var(--text-dim)">')).join('') : '';
+      return groupRow + detailRows;
+    }).join('');
+  } else {
+    tableBody = state.supports.map(supportRow).join('');
+  }
+
+  const byType = {}, byDispo = {};
+  state.supports.forEach(s=>{ const v=displayValue(s.id,null); byType[s.type]=(byType[s.type]||0)+(v?v.value:0); byDispo[s.disponibilite]=(byDispo[s.disponibilite]||0)+(v?v.value:0); });
+
+  const empRows = state.emprunts.map(e=>{
+    const sum = loanInterestSummary(e);
+    return `<tr><td class="label-cell">${e.nom}</td><td>${fmtEUR(loanRemainingToday(e))}</td><td class="neg">${fmtEUR(sum.interetsPayes)}</td><td>${fmtEUR(sum.interetsRestants)}</td><td>${fmtEUR(sum.assurancePayee+sum.assuranceRestante)}</td></tr>`;
+  }).join('');
+  const empCard = state.emprunts.length? `
+  <div class="card">
+    <h3>Emprunts</h3>
+    <div class="sub">Intérêts et assurance, payés à ce jour et restant à courir sur l'échéancier</div>
+    <table><thead><tr><th>Emprunt</th><th>Restant dû</th><th>Intérêts payés</th><th>Intérêts restants</th><th>Assurance totale</th></tr></thead><tbody>${empRows}</tbody></table>
+  </div>` : '';
+
+  return `
+  <div class="card">
+    <h3>Performance du portefeuille</h3>
+    <div class="sub">Tous les supports combinés, méthode XIRR</div>
+    <div class="ledger-row" style="gap:32px">
+      <div class="ledger-item"><div class="label">Performance ${dashboardYear}</div><div class="value mono" style="font-size:22px">${perfBtn(portAnnuel,'Performance '+dashboardYear+' — Portefeuille')}</div></div>
+      <div class="ledger-item"><div class="label">Performance globale</div><div class="value mono" style="font-size:22px">${perfBtn(portGlobal,'Performance globale — Portefeuille')}</div></div>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>Répartition par type</h3><div class="sub">Valeur actuelle par catégorie de support</div>${svgDonut(byType)}</div>
+    <div class="card"><h3>Répartition par disponibilité</h3><div class="sub">Ce qui est mobilisable rapidement vs bloqué</div>${svgDonut(byDispo)}</div>
+  </div>
+  <div class="card">
+    <h3>Comparatif des supports</h3>
+    <div class="sub">Performance de l'année sélectionnée vs performance globale, méthode XIRR</div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:end;margin-bottom:14px">
+      <div class="field" style="max-width:140px"><label>Année civile</label>${yearSelect}</div>
+      <div class="field"><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);text-transform:none;letter-spacing:0"><input type="checkbox" id="groupByTypeChk" ${dashboardGroupByType?'checked':''}> Regrouper par type</label></div>
+      ${dashboardGroupByType? `<div class="field"><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);text-transform:none;letter-spacing:0"><input type="checkbox" id="groupDetailChk" ${dashboardShowDetail?'checked':''}> Avec détail</label></div>`:''}
+    </div>
+    <table><thead><tr><th>Support</th><th>Type</th><th>Disponibilité</th><th>Valeur</th><th>Perf. ${dashboardYear}</th><th>Perf. globale</th><th>Contrôle SCPI</th></tr></thead>
+    <tbody>${tableBody}</tbody></table>
+  </div>
+  ${empCard}`;
+}
+
+// ---- SUPPORTS ----
+function viewSupports(){
+  const rows = state.supports.map(s=>`<tr>
+    <td class="label-cell">${s.nom}</td><td class="label-cell">${s.type}</td><td class="label-cell">${s.disponibilite}</td>
+    <td>${s.dateDisponibilite? fmtDate(s.dateDisponibilite) : '—'}</td>
+    <td>${s.delaiJouissance||0} mois</td>
+    <td><button class="btn-edit" data-edit-support="${s.id}">Modifier</button><button class="btn-del" data-del-support="${s.id}">Suppr.</button></td>
+  </tr>`).join('');
+  const e = editing.support ? state.supports.find(s=>s.id===editing.support) : null;
+  const typeRows = state.types.map((t,i)=>`<tr>
+    <td><input class="type-rename" data-type-idx="${i}" value="${t}"></td>
+    <td><button class="btn-del" data-del-type="${t}">Supprimer</button></td>
+  </tr>`).join('');
+  const supOptsForTaux = ()=>state.supports.map(sp=>`<option value="${sp.id}">${sp.nom}</option>`).join('');
+  const tauxRows = [];
+  state.supports.forEach(s=>{
+    Object.entries(s.tauxAnnonces||{}).sort((a,b)=>b[0]-a[0]).forEach(([annee,taux])=>{
+      tauxRows.push(`<tr><td class="label-cell">${s.nom}</td><td>${annee}</td><td>${taux} %</td>
+        <td><button class="btn-del" data-del-taux="${s.id}|${annee}">Suppr.</button></td></tr>`);
+    });
+  });
+  return `
+  <div class="card">
+    <h3>${e?'Modifier le support':'Ajouter un support'}</h3>
+    <form class="inline-form" id="formSupport">
+      <div class="field"><label>Nom</label><input name="nom" required value="${e?e.nom:''}"></div>
+      <div class="field"><label>Type</label><select name="type">${state.types.map(t=>`<option ${e&&e.type===t?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="field"><label>Disponibilité</label><select name="disponibilite">${DISPOS.map(t=>`<option ${e&&e.disponibilite===t?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="field"><label>Date de disponibilité (si différée, ex. PER, PEE)</label><input name="dateDisponibilite" type="text" inputmode="numeric" placeholder="JJ/MM/AAAA" pattern="\\d{2}/\\d{2}/\\d{4}" value="${e&&e.dateDisponibilite?isoToFr(e.dateDisponibilite):''}"></div>
+      <div class="field"><label>Délai jouissance (mois, SCPI)</label><input name="delaiJouissance" type="number" min="0" value="${e?(e.delaiJouissance||0):0}"></div>
+      <button class="btn" type="submit">${e?'Enregistrer':'Ajouter'}</button>
+      ${e?'<button class="btn secondary" type="button" id="cancelEditSupport">Annuler</button>':''}
+    </form>
+  </div>
+  <div class="card">
+    <h3>Supports enregistrés</h3>
+    ${state.supports.length? `<table><thead><tr><th>Nom</th><th>Type</th><th>Disponibilité</th><th>Disponible le</th><th>Délai jouissance</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">Aucun support pour le moment.</div>'}
+  </div>
+  <div class="card">
+    <h3>Types de support</h3>
+    <div class="sub">Modifie un nom (valide en cliquant hors du champ) ou supprime un type inutilisé ; ajoute-en un nouveau si besoin.</div>
+    <table><thead><tr><th>Type</th><th></th></tr></thead><tbody>${typeRows}</tbody></table>
+    <form class="inline-form" id="formType" style="margin-top:12px">
+      <div class="field"><label>Nouveau type</label><input name="newType" required></div>
+      <button class="btn" type="submit">Ajouter</button>
+    </form>
+  </div>
+  ${state.supports.length? `
+  <div class="card">
+    <h3>Taux annoncés par année</h3>
+    <div class="sub">Optionnel, et propre à chaque année (utile pour les SCPI notamment) — sert de contrôle dans la vue d'ensemble, sans impact sur le calcul de performance.</div>
+    <form class="inline-form" id="formTaux">
+      <div class="field"><label>Support</label><select name="supportId">${supOptsForTaux()}</select></div>
+      <div class="field"><label>Année</label><input name="annee" type="number" value="${new Date().getFullYear()}"></div>
+      <div class="field"><label>Taux annoncé (%)</label><input name="taux" type="number" step="0.01" required></div>
+      <button class="btn" type="submit">Ajouter</button>
+    </form>
+    ${tauxRows.length? `<table><thead><tr><th>Support</th><th>Année</th><th>Taux</th><th></th></tr></thead><tbody>${tauxRows.join('')}</tbody></table>` : '<div class="empty">Aucun taux annoncé renseigné.</div>'}
+  </div>`:''}`;
+}
+
+// ---- MOUVEMENTS ----
+function viewMouvements(){
+  const supOpts = sel=>state.supports.map(sp=>`<option value="${sp.id}" ${sel===sp.id?'selected':''}>${sp.nom}</option>`).join('');
+  const typeLabel = t=> t==='versement'?'Versement':t==='retrait'?'Retrait':'Intérêts perçus';
+  const rows = state.mouvements.slice().sort((a,b)=>a.date<b.date?1:-1).map(m=>{
+    const sup = state.supports.find(s=>s.id===m.supportId);
+    return `<tr>
+      <td>${fmtDate(m.date)}</td><td class="label-cell">${sup?sup.nom:'?'}</td>
+      <td class="label-cell"><span class="pill">${typeLabel(m.type)}</span>${m.type==='interet'?` <span class="pill">rattaché ${m.anneeRattachement}</span>`:''}</td>
+      <td class="${m.type==='retrait'?'neg':'pos'}">${fmtEUR(m.montant)}</td>
+      <td>${m.fraisMontant?fmtEUR(m.fraisMontant):''}${m.fraisPourcent?' / '+m.fraisPourcent+'%':''}</td>
+      <td><button class="btn-edit" data-edit-mouvement="${m.id}">Modifier</button><button class="btn-del" data-del-mouvement="${m.id}">Suppr.</button></td>
+    </tr>`;
+  }).join('');
+  const e = editing.mouvement ? state.mouvements.find(m=>m.id===editing.mouvement) : null;
+  const defaultSupport = e ? e.supportId : (lastSupportId && state.supports.some(s=>s.id===lastSupportId) ? lastSupportId : (state.supports[0]&&state.supports[0].id));
+  const defaultType = e ? e.type : 'versement';
+  if(state.supports.length===0) return `<div class="card"><div class="empty">Ajoute d'abord un support.</div></div>`;
+  return `
+  <div class="card">
+    <h3>${e?'Modifier le mouvement':'Ajouter un mouvement'}</h3>
+    <div class="helptext">Le montant est toujours saisi positif, le type détermine le sens. Pour un intérêt perçu début N+1 mais économiquement rattaché à l'année N (ex. coupon SCPI du 4ᵉ trimestre), indique l'année de rattachement N : il comptera dans la performance de cette année-là, pas celle du paiement. Les frais de souscription restent indicatifs (déjà reflétés par la valorisation).</div>
+    <form class="inline-form" id="formMouvement">
+      <div class="field"><label>Support</label><select name="supportId">${supOpts(defaultSupport)}</select></div>
+      <div class="field"><label>Type</label><select name="type" id="mvtType">
+        <option value="versement" ${defaultType==='versement'?'selected':''}>Versement</option>
+        <option value="retrait" ${defaultType==='retrait'?'selected':''}>Retrait</option>
+        <option value="interet" ${defaultType==='interet'?'selected':''}>Intérêts perçus</option>
+      </select></div>
+      <div class="field"><label>Date (JJ/MM/AAAA)</label><input name="date" type="text" inputmode="numeric" placeholder="JJ/MM/AAAA" pattern="\\d{2}/\\d{2}/\\d{4}" required value="${e?isoToFr(e.date):''}"></div>
+      <div class="field"><label>Montant (€)</label><input name="montant" type="number" step="0.01" min="0" required value="${e?Math.abs(e.montant):''}"></div>
+      <div class="field" id="rattachementField" style="${defaultType==='interet'?'':'display:none'}"><label>Année de rattachement</label><input name="anneeRattachement" type="number" value="${e&&e.anneeRattachement?e.anneeRattachement:new Date().getFullYear()}"></div>
+      <div class="field"><label>Dont frais (€)</label><input name="fraisMontant" type="number" step="0.01" value="${e?(e.fraisMontant||''):''}"></div>
+      <div class="field"><label>Dont frais (%)</label><input name="fraisPourcent" type="number" step="0.01" value="${e?(e.fraisPourcent||''):''}"></div>
+      <button class="btn" type="submit">${e?'Enregistrer':'Ajouter'}</button>
+      ${e?'<button class="btn secondary" type="button" id="cancelEditMouvement">Annuler</button>':''}
+    </form>
+  </div>
+  <div class="card"><h3>Historique des mouvements</h3>
+    ${state.mouvements.length? `<table><thead><tr><th>Date</th><th>Support</th><th>Type</th><th>Montant</th><th>Frais</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">Aucun mouvement.</div>'}
+  </div>`;
+}
+
+// ---- ACTIONS ----
+function viewActions(){
+  if(state.supports.length===0) return `<div class="card"><div class="empty">Ajoute d'abord un support (PEA, compte-titres…) pour pouvoir y rattacher des actions.</div></div>`;
+  const supOpts = sel=>state.supports.map(sp=>`<option value="${sp.id}" ${sel===sp.id?'selected':''}>${sp.nom} (${sp.type})</option>`).join('');
+  const e = editing.action ? state.actions.find(a=>a.id===editing.action) : null;
+  const rows = state.actions.slice().sort((a,b)=>a.nom.localeCompare(b.nom)).map(a=>{
+    const sup = state.supports.find(s=>s.id===a.supportId);
+    const valeurActuelle = a.quantite*a.coursActuel;
+    const valeurRevient = a.quantite*a.pru;
+    const plusValue = valeurActuelle - valeurRevient;
+    const plusValuePct = valeurRevient ? plusValue/valeurRevient : null;
+    const progression = a.coursCible ? Math.min(1, a.coursActuel/a.coursCible) : null;
+    const progressBar = a.coursCible ? `
+      <div style="background:var(--panel);border-radius:20px;height:6px;width:100%;overflow:hidden;margin-top:4px">
+        <div style="background:${progression>=1?'var(--gold)':'var(--teal)'};height:100%;width:${(progression*100).toFixed(0)}%"></div>
+      </div>
+      <div style="font-size:10px;color:var(--text-dim);margin-top:2px">${(progression*100).toFixed(0)}% de l'objectif${progression>=1?' — atteint':''}</div>` : '';
+    return `<tr>
+      <td class="label-cell">${a.nom}${a.ticker?` <span class="pill">${a.ticker}</span>`:''}</td>
+      <td class="label-cell">${sup?sup.nom:'?'}</td>
+      <td>${a.quantite}</td>
+      <td>${fmtEUR(a.pru)}</td>
+      <td>${fmtEUR(a.coursActuel)}</td>
+      <td>${fmtEUR(valeurActuelle)}</td>
+      <td class="${plusValue>0?'pos':plusValue<0?'neg':''}">${fmtEUR(plusValue)}${plusValuePct!==null?` (${fmtPct(plusValuePct)})`:''}</td>
+      <td style="min-width:120px">${a.coursCible? `${fmtEUR(a.coursCible)}${progressBar}` : '—'}</td>
+      <td><button class="btn-edit" data-edit-action="${a.id}">Modifier</button><button class="btn-del" data-del-action="${a.id}">Suppr.</button></td>
+    </tr>`;
+  }).join('');
+  return `
+  <div class="card">
+    <h3>${e?"Modifier la ligne":'Ajouter une action'}</h3>
+    <div class="helptext">La valeur de ces positions s'ajoute automatiquement à la valorisation "aujourd'hui" du support parent (elle remplace la saisie manuelle du jour, sans effacer ton historique de valorisations passées).</div>
+    <form class="inline-form" id="formAction">
+      <div class="field"><label>Support (PEA / CTO…)</label><select name="supportId">${supOpts(e?e.supportId:null)}</select></div>
+      <div class="field"><label>Nom</label><input name="nom" required value="${e?e.nom:''}"></div>
+      <div class="field"><label>Ticker (optionnel)</label><input name="ticker" value="${e&&e.ticker?e.ticker:''}"></div>
+      <div class="field"><label>Quantité</label><input name="quantite" type="number" step="0.0001" required value="${e?e.quantite:''}"></div>
+      <div class="field"><label>Prix de revient moyen (€)</label><input name="pru" type="number" step="0.01" required value="${e?e.pru:''}"></div>
+      <div class="field"><label>Cours actuel (€)</label><input name="coursActuel" type="number" step="0.01" required value="${e?e.coursActuel:''}"></div>
+      <div class="field"><label>Cours cible / objectif (€, optionnel)</label><input name="coursCible" type="number" step="0.01" value="${e&&e.coursCible?e.coursCible:''}"></div>
+      <button class="btn" type="submit">${e?'Enregistrer':'Ajouter'}</button>
+      ${e?'<button class="btn secondary" type="button" id="cancelEditAction">Annuler</button>':''}
+    </form>
+  </div>
+  <div class="card"><h3>Lignes suivies</h3>
+    ${state.actions.length? `<table><thead><tr><th>Valeur</th><th>Support</th><th>Qté</th><th>PRU</th><th>Cours actuel</th><th>Valeur actuelle</th><th>+/- value</th><th>Objectif</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">Aucune action suivie pour le moment.</div>'}
+  </div>`;
+}
+
+// ---- VALORISATIONS ----
+function viewValorisations(){
+  const supOpts = s=>state.supports.map(sp=>`<option value="${sp.id}" ${s&&s.supportId===sp.id?'selected':''}>${sp.nom}</option>`).join('');
+  const rows = state.valorisations.slice().sort((a,b)=>a.date<b.date?1:-1).map(v=>{
+    const sup = state.supports.find(s=>s.id===v.supportId);
+    return `<tr><td>${fmtDate(v.date)}</td><td class="label-cell">${sup?sup.nom:'?'}</td><td>${fmtEUR(v.value)}</td>
+    <td><button class="btn-edit" data-edit-valo="${v.id}">Modifier</button><button class="btn-del" data-del-valo="${v.id}">Suppr.</button></td></tr>`;
+  }).join('');
+  const e = editing.valo ? state.valorisations.find(v=>v.id===editing.valo) : null;
+  if(state.supports.length===0) return `<div class="card"><div class="empty">Ajoute d'abord un support.</div></div>`;
+  return `
+  <div class="card">
+    <h3>${e?'Modifier la valorisation':'Ajouter un relevé de valorisation'}</h3>
+    <div class="helptext">Ajoute un point au 1er janvier de chaque année (pour calculer la performance annuelle) et un point récent (pour la valeur actuelle).</div>
+    <form class="inline-form" id="formValo">
+      <div class="field"><label>Support</label><select name="supportId">${supOpts(e)}</select></div>
+      <div class="field"><label>Date</label><input name="date" type="date" required value="${e?e.date:''}"></div>
+      <div class="field"><label>Valeur (€)</label><input name="value" type="number" step="0.01" required value="${e?e.value:''}"></div>
+      <button class="btn" type="submit">${e?'Enregistrer':'Ajouter'}</button>
+      ${e?'<button class="btn secondary" type="button" id="cancelEditValo">Annuler</button>':''}
+    </form>
+  </div>
+  <div class="card"><h3>Historique des valorisations</h3>
+    ${state.valorisations.length? `<table><thead><tr><th>Date</th><th>Support</th><th>Valeur</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">Aucune valorisation.</div>'}
+  </div>`;
+}
+
+// ---- EMPRUNTS ----
+function viewEmprunts(){
+  const rows = state.emprunts.map(e=>{
+    const restant = loanRemainingToday(e);
+    const assMensuelle = loanInsuranceMonthly(e);
+    const mensualiteTotale = loanMensualiteInitiale(e) + assMensuelle;
+    const summary = loanInterestSummary(e);
+    return `<tr>
+      <td class="label-cell">${e.nom}</td><td>${fmtEUR(e.capital)}</td><td>${e.taux}%</td><td>${e.duree} mois</td>
+      <td class="label-cell">${e.type==='constant'?'Mensualités const.':'In fine'}</td>
+      <td>${fmtEUR(restant)}</td>
+      <td>${assMensuelle?fmtEUR(assMensuelle)+'/mois':'—'}</td>
+      <td>${fmtEUR(mensualiteTotale)}/mois</td>
+      <td class="neg">${fmtEUR(summary.interetsPayes)}</td>
+      <td>${fmtEUR(summary.interetsRestants)}</td>
+      <td><button class="btn-edit" data-edit-emprunt="${e.id}">Modifier</button><button class="btn-del" data-del-emprunt="${e.id}">Suppr.</button></td>
+    </tr>`;
+  }).join('');
+  const ed = editing.emprunt ? state.emprunts.find(x=>x.id===editing.emprunt) : null;
+  const empOpts = ()=>state.emprunts.map(e=>`<option value="${e.id}">${e.nom}</option>`).join('');
+  const prepayRows = state.remboursementsAnticipes.slice().sort((a,b)=>a.date<b.date?1:-1).map(p=>{
+    const emp = state.emprunts.find(e=>e.id===p.empruntId);
+    return `<tr><td>${fmtDate(p.date)}</td><td class="label-cell">${emp?emp.nom:'?'}</td><td>${fmtEUR(p.montant)}</td>
+    <td class="label-cell">${p.mode==='mensualite'?'Mensualité réduite':'Durée réduite'}</td>
+    <td><button class="btn-del" data-del-prepay="${p.id}">Suppr.</button></td></tr>`;
+  }).join('');
+  return `
+  <div class="card">
+    <h3>${ed?"Modifier l'emprunt":'Ajouter un emprunt'}</h3>
+    <form class="inline-form" id="formEmprunt">
+      <div class="field"><label>Nom</label><input name="nom" required value="${ed?ed.nom:''}"></div>
+      <div class="field"><label>Capital emprunté (€)</label><input name="capital" type="number" step="0.01" required value="${ed?ed.capital:''}"></div>
+      <div class="field"><label>Taux annuel (%)</label><input name="taux" type="number" step="0.01" required value="${ed?ed.taux:''}"></div>
+      <div class="field"><label>Durée (mois)</label><input name="duree" type="number" required value="${ed?ed.duree:''}"></div>
+      <div class="field"><label>Date de départ</label><input name="dateDebut" type="date" required value="${ed?ed.dateDebut:''}"></div>
+      <div class="field"><label>Amortissement</label><select name="type"><option value="constant" ${ed&&ed.type==='constant'?'selected':''}>Mensualités constantes</option><option value="infine" ${ed&&ed.type==='infine'?'selected':''}>In fine</option></select></div>
+      <div class="field"><label>Assurance</label><select name="assuranceType"><option value="pourcentage" ${ed&&ed.assuranceType==='pourcentage'?'selected':''}>% annuel du capital initial</option><option value="montant" ${ed&&ed.assuranceType==='montant'?'selected':''}>Montant fixe mensuel</option></select></div>
+      <div class="field"><label>Valeur assurance</label><input name="assuranceValeur" type="number" step="0.001" value="${ed&&ed.assuranceValeur?ed.assuranceValeur:''}"></div>
+      <button class="btn" type="submit">${ed?'Enregistrer':'Ajouter'}</button>
+      ${ed?'<button class="btn secondary" type="button" id="cancelEditEmprunt">Annuler</button>':''}
+    </form>
+  </div>
+  <div class="card"><h3>Emprunts en cours</h3>
+    <div class="sub">Intérêts payés / restants calculés à la date du jour sur l'échéancier</div>
+    ${state.emprunts.length? `<table><thead><tr><th>Nom</th><th>Capital</th><th>Taux</th><th>Durée</th><th>Type</th><th>Restant dû</th><th>Assurance</th><th>Mensualité totale</th><th>Intérêts payés</th><th>Intérêts restants</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">Aucun emprunt.</div>'}
+  </div>
+  ${state.emprunts.length? `
+  <div class="card">
+    <h3>Remboursements anticipés</h3>
+    <div class="helptext">Choisis l'effet du remboursement : réduire la durée (mensualité inchangée) ou réduire la mensualité (durée inchangée).</div>
+    <form class="inline-form" id="formPrepay">
+      <div class="field"><label>Emprunt</label><select name="empruntId">${empOpts()}</select></div>
+      <div class="field"><label>Date</label><input name="date" type="date" required></div>
+      <div class="field"><label>Montant (€)</label><input name="montant" type="number" step="0.01" required></div>
+      <div class="field"><label>Effet</label><select name="mode"><option value="duree">Réduire la durée</option><option value="mensualite">Réduire la mensualité</option></select></div>
+      <button class="btn" type="submit">Ajouter</button>
+    </form>
+    ${state.remboursementsAnticipes.length? `<table><thead><tr><th>Date</th><th>Emprunt</th><th>Montant</th><th>Effet</th><th></th></tr></thead><tbody>${prepayRows}</tbody></table>`:'<div class="empty">Aucun remboursement anticipé enregistré.</div>'}
+  </div>`:''}`;
+}
+
+// ---- PROJECTIONS ----
+function viewProjections(){
+  if(state.supports.length===0 && state.emprunts.length===0) return `<div class="card"><div class="empty">Ajoute des supports et/ou emprunts pour lancer une projection.</div></div>`;
+  const hypRows = state.supports.map(s=>`<tr>
+    <td class="label-cell">${s.nom}</td>
+    <td><input data-hyp="${s.id}" type="number" step="0.1" style="width:80px" value="${state.projection.hypotheses[s.id]!==undefined?state.projection.hypotheses[s.id]:3}"> %/an</td>
+  </tr>`).join('');
+  const supOpts = ()=>state.supports.map(sp=>`<option value="${sp.id}">${sp.nom}</option>`).join('');
+  const empOpts = ()=>state.emprunts.map(e=>`<option value="${e.id}">${e.nom}</option>`).join('');
+  const vrRows = state.projection.versementsRecurrents.map(v=>{
+    const sup = state.supports.find(s=>s.id===v.supportId);
+    return `<tr><td class="label-cell">${sup?sup.nom:'?'}</td><td>${fmtEUR(v.montant)}/mois</td><td>${v.dateFin?fmtDate(v.dateFin):'—'}</td>
+    <td><span class="scenario-tag ${v.scenario==='arbitrage'?'scenario-arb':'scenario-both'}">${v.scenario==='arbitrage'?'Scénario arbitrage':'Toujours'}</span></td>
+    <td><button class="btn-del" data-del-vr="${v.id}">Suppr.</button></td></tr>`;
+  }).join('');
+  const rsRows = state.projection.remboursementsSimules.map(r=>{
+    const emp = state.emprunts.find(e=>e.id===r.empruntId);
+    return `<tr><td class="label-cell">${emp?emp.nom:'?'}</td><td>${fmtDate(r.date)}</td><td>${fmtEUR(r.montant)}</td>
+    <td><span class="scenario-tag ${r.scenario==='arbitrage'?'scenario-arb':'scenario-both'}">${r.scenario==='arbitrage'?'Scénario arbitrage':'Toujours'}</span></td>
+    <td><button class="btn-del" data-del-rs="${r.id}">Suppr.</button></td></tr>`;
+  }).join('');
+  return `
+  <div class="card">
+    <h3>Hypothèses de rendement</h3>
+    <div class="sub">Rendement annuel moyen supposé par support</div>
+    ${state.supports.length? `<table><thead><tr><th>Support</th><th>Rendement</th></tr></thead><tbody>${hypRows}</tbody></table>`:'<div class="empty">Aucun support.</div>'}
+    <div style="margin-top:14px" class="field"><label>Horizon de projection (années)</label><input id="horizonInput" type="number" min="1" max="40" value="${state.projection.horizonAnnees}" style="width:80px"></div>
+  </div>
+  <div class="card">
+    <h3>Versements récurrents</h3>
+    <div class="sub">Coche "scénario arbitrage" pour tester l'impact d'un versement récurrent optionnel</div>
+    ${state.supports.length? `
+    <form class="inline-form" id="formVR">
+      <div class="field"><label>Support</label><select name="supportId">${supOpts()}</select></div>
+      <div class="field"><label>Montant mensuel (€)</label><input name="montant" type="number" step="1" required></div>
+      <div class="field"><label>Fin (optionnel)</label><input name="dateFin" type="date"></div>
+      <div class="field"><label>Scénario</label><select name="scenario"><option value="both">Toujours actif</option><option value="arbitrage">Arbitrage seulement</option></select></div>
+      <button class="btn" type="submit">Ajouter</button>
+    </form>`:''}
+    ${state.projection.versementsRecurrents.length? `<table><thead><tr><th>Support</th><th>Montant</th><th>Fin</th><th>Scénario</th><th></th></tr></thead><tbody>${vrRows}</tbody></table>`:'<div class="empty">Aucun versement récurrent.</div>'}
+  </div>
+  <div class="card">
+    <h3>Remboursements anticipés simulés</h3>
+    <div class="sub">Teste l'effet d'un remboursement anticipé futur sur le patrimoine net</div>
+    ${state.emprunts.length? `
+    <form class="inline-form" id="formRS">
+      <div class="field"><label>Emprunt</label><select name="empruntId">${empOpts()}</select></div>
+      <div class="field"><label>Date</label><input name="date" type="date" required></div>
+      <div class="field"><label>Montant (€)</label><input name="montant" type="number" step="1" required></div>
+      <div class="field"><label>Scénario</label><select name="scenario"><option value="arbitrage">Arbitrage seulement</option><option value="both">Toujours actif</option></select></div>
+      <button class="btn" type="submit">Ajouter</button>
+    </form>`: '<div class="empty">Aucun emprunt enregistré.</div>'}
+    ${state.projection.remboursementsSimules.length? `<table><thead><tr><th>Emprunt</th><th>Date</th><th>Montant</th><th>Scénario</th><th></th></tr></thead><tbody>${rsRows}</tbody></table>`:''}
+  </div>
+  <div class="card">
+    <h3>Patrimoine net projeté</h3>
+    <div class="sub">Scénario de base (traits pleins) vs scénario avec arbitrage (pointillés)</div>
+    ${renderProjectionChart()}
+  </div>`;
+}
+
+function projectPatrimoine(includeArbitrage){
+  const months = state.projection.horizonAnnees*12;
+  const today = new Date();
+  // support values
+  let supVals = {};
+  state.supports.forEach(s=>{ const v = displayValue(s.id,null); supVals[s.id]=v?v.value:0; });
+  // loan capitals (start from today's remaining)
+  let loanCap = {};
+  state.emprunts.forEach(e=>{ loanCap[e.id]=loanRemainingToday(e); });
+  const points = [];
+  let totalInterets = 0, totalAssurance = 0;
+  for(let m=0;m<=months;m++){
+    const date = new Date(today); date.setMonth(date.getMonth()+m);
+    const iso = date.toISOString().slice(0,10);
+    if(m>0){
+      // grow supports + recurring contributions
+      state.supports.forEach(s=>{
+        const rate = (state.projection.hypotheses[s.id]!==undefined?state.projection.hypotheses[s.id]:3)/100/12;
+        supVals[s.id] = supVals[s.id]*(1+rate);
+        state.projection.versementsRecurrents.filter(v=>v.supportId===s.id && (v.scenario==='both' || includeArbitrage) && (!v.dateFin || v.dateFin>=iso)).forEach(v=>{
+          supVals[s.id]+=v.montant;
+        });
+      });
+      // amortize loans (capital, intérêts et assurance)
+      state.emprunts.forEach(e=>{
+        if(loanCap[e.id]<=0.5) return;
+        const rate = e.taux/100/12;
+        const n = e.duree;
+        const mensualite = e.type==='constant' ? (rate===0? e.capital/n : e.capital*rate/(1-Math.pow(1+rate,-n))) : e.capital*rate;
+        const interet = loanCap[e.id]*rate;
+        let principal = e.type==='constant' ? (mensualite-interet) : 0;
+        const prepay = state.projection.remboursementsSimules.filter(r=>r.empruntId===e.id && r.date.slice(0,7)===iso.slice(0,7) && (r.scenario==='both' || includeArbitrage)).reduce((s,r)=>s+r.montant,0);
+        loanCap[e.id] = Math.max(0, loanCap[e.id]-principal-prepay);
+        totalInterets += interet;
+        totalAssurance += loanInsuranceMonthly(e);
+      });
+    }
+    const assets = Object.values(supVals).reduce((a,b)=>a+b,0);
+    const debts = Object.values(loanCap).reduce((a,b)=>a+b,0);
+    points.push({date: iso, net: assets-debts});
+  }
+  return {points, totalInterets, totalAssurance};
+}
+function renderProjectionChart(){
+  if(state.supports.length===0 && state.emprunts.length===0) return '<div class="empty">Ajoute des supports ou des emprunts pour voir la projection.</div>';
+  const base = projectPatrimoine(false);
+  const arb = projectPatrimoine(true);
+  const hasArb = state.projection.versementsRecurrents.some(v=>v.scenario==='arbitrage') || state.projection.remboursementsSimules.some(r=>r.scenario==='arbitrage');
+  const sample = pts => pts.filter((_,i)=>i%3===0).map(p=>({y:Math.round(p.net), label:p.date.slice(0,7)}));
+  const series = [{label:'Scénario de base', color:'#4F9C82', points: sample(base.points)}];
+  if(hasArb) series.push({label:'Avec arbitrage', color:'#C9A65D', dash:'6,4', points: sample(arb.points)});
+  const costNote = state.emprunts.length? `<div class="sub" style="margin-top:12px">Sur l'horizon (scénario de base) : ${fmtEUR(base.totalInterets)} d'intérêts et ${fmtEUR(base.totalAssurance)} d'assurance emprunt${hasArb?` · scénario avec arbitrage : ${fmtEUR(arb.totalInterets)} d'intérêts et ${fmtEUR(arb.totalAssurance)} d'assurance`:''}</div>` : '';
+  return svgLineChart(series) + costNote;
+}
+
+// ---- OFFRES ----
+// Comparateurs neutres identifiés par type de support (vérifiés) ; pour un type non couvert (FIP, PEE, Crypto,
+// types personnalisés…) on retombe sur une recherche, plutôt que d'inventer un lien.
+const OFFER_LINKS = {
+  'Assurance-vie': [{title:'Comparatif assurance-vie — MoneyVox', url:'https://www.moneyvox.fr/assurance-vie/'}],
+  'PEA': [{title:'Comparatif PEA / courtiers bourse — MoneyVox', url:'https://www.moneyvox.fr/bourse/'}],
+  'Compte-titres': [{title:'Comparatif courtiers bourse — MoneyVox', url:'https://www.moneyvox.fr/bourse/'}],
+  'Livret/épargne': [{title:'Comparatif des livrets — MoneyVox', url:'https://www.moneyvox.fr/livret/'}],
+  'Immobilier': [{title:'Baromètre des taux de crédit immobilier — MoneyVox', url:'https://www.moneyvox.fr/credit/barometre-taux.php'}],
+  'SCPI': [{title:'Comparatif SCPI — France SCPI', url:'https://francescpi.com/comparatif-scpi'}],
+  'PER': [{title:'Comparatif PER — MoneyVox', url:'https://www.moneyvox.fr/retraite/plan-epargne-retraite.php'}],
+};
+function offerLinksForType(type){
+  return OFFER_LINKS[type] || [{title:`Rechercher les meilleures offres — ${type}`, url:'https://www.google.com/search?q='+encodeURIComponent('comparatif meilleures offres '+type)}];
+}
+function viewOffres(){
+  if(state.supports.length===0) return `<div class="card"><div class="empty">Ajoute d'abord un support dans l'onglet "Supports" pour voir les offres correspondant à son type.</div></div>`;
+  const opts = state.supports.map(s=>`<option value="${s.id}">${s.nom} (${s.type})</option>`).join('');
+  return `
+  <div class="card">
+    <h3>Offres actuelles du marché</h3>
+    <div class="sub">Liens vers des comparateurs externes, selon le type du support choisi. Les taux et classements changent en continu — consulte le site pour les chiffres à jour ; ce ne sont pas des recommandations personnalisées.</div>
+    <div class="field" style="max-width:300px;margin-top:14px">
+      <label>Support</label>
+      <select id="offresSupportSel">${opts}</select>
+    </div>
+    <div id="offresLinks" style="margin-top:18px"></div>
+  </div>`;
+}
+function renderOfferLinks(supportId){
+  const sup = state.supports.find(s=>s.id===supportId);
+  const container = document.getElementById('offresLinks');
+  if(!container) return;
+  if(!sup){ container.innerHTML = '<div class="empty">Sélectionne un support.</div>'; return; }
+  const links = offerLinksForType(sup.type);
+  container.innerHTML = `<div class="sub" style="margin-bottom:10px">Type : ${sup.type}</div>` + links.map(l=>`
+    <a href="${l.url}" target="_blank" rel="noopener" style="display:block;padding:12px 14px;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;margin-bottom:8px;color:var(--text);text-decoration:none">
+      <div style="font-weight:600;font-size:13px">${l.title}</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:2px">${l.url.replace(/^https?:\/\//,'').split('/')[0]}</div>
+    </a>`).join('');
+}
+
+// ---------- HANDLERS ----------
+function attachHandlers(tab){
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>{
+    document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); editing={}; renderTab(b.dataset.tab);
+  });
+
+  if(tab==='dashboard'){
+    const ys = document.getElementById('dashboardYearSel');
+    if(ys) ys.onchange = ()=>{ dashboardYear = Number(ys.value); renderTab('dashboard'); };
+    document.querySelectorAll('.perf-link').forEach(b=>b.onclick=()=>{
+      openXIRRDetail(b.dataset.ids.split(','), b.dataset.since||null, b.dataset.until||null, b.dataset.title);
+    });
+    const gbt = document.getElementById('groupByTypeChk'); if(gbt) gbt.onchange = ()=>{ dashboardGroupByType = gbt.checked; renderTab('dashboard'); };
+    const gd = document.getElementById('groupDetailChk'); if(gd) gd.onchange = ()=>{ dashboardShowDetail = gd.checked; renderTab('dashboard'); };
+  }
+
+  if(tab==='supports'){
+    const f = document.getElementById('formSupport');
+    f.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(f);
+      const dispoRaw = (fd.get('dateDisponibilite')||'').trim();
+      let dateDisponibilite = null;
+      if(dispoRaw){ dateDisponibilite = frToIso(dispoRaw); if(!dateDisponibilite){ alert('Date de disponibilité invalide : utilise le format JJ/MM/AAAA.'); return; } }
+      const obj = {nom:fd.get('nom'), type:fd.get('type'), disponibilite:fd.get('disponibilite'), dateDisponibilite, delaiJouissance:Number(fd.get('delaiJouissance')||0)};
+      if(editing.support){ Object.assign(state.supports.find(s=>s.id===editing.support), obj); editing.support=null; }
+      else state.supports.push({id:uid(), tauxAnnonces:{}, ...obj});
+      saveState(); renderAll();
+    };
+    const cancel = document.getElementById('cancelEditSupport'); if(cancel) cancel.onclick=()=>{editing.support=null; renderTab('supports');};
+    document.querySelectorAll('[data-edit-support]').forEach(b=>b.onclick=()=>{editing.support=b.dataset.editSupport; renderTab('supports');});
+    document.querySelectorAll('[data-del-support]').forEach(b=>b.onclick=()=>{
+      const id=b.dataset.delSupport;
+      state.supports=state.supports.filter(s=>s.id!==id);
+      state.mouvements=state.mouvements.filter(m=>m.supportId!==id);
+      state.valorisations=state.valorisations.filter(v=>v.supportId!==id);
+      state.actions=state.actions.filter(a=>a.supportId!==id);
+      saveState(); renderAll();
+    });
+    document.querySelectorAll('.type-rename').forEach(inp=>{
+      inp.onchange = ()=>{
+        const idx = Number(inp.dataset.typeIdx);
+        const oldVal = state.types[idx];
+        const newVal = inp.value.trim();
+        if(!newVal || newVal===oldVal){ inp.value=oldVal; return; }
+        if(state.types.includes(newVal)){ alert('Ce type existe déjà.'); inp.value=oldVal; return; }
+        state.types[idx]=newVal;
+        state.supports.forEach(s=>{ if(s.type===oldVal) s.type=newVal; });
+        saveState(); renderTab('supports');
+      };
+    });
+    document.querySelectorAll('[data-del-type]').forEach(b=>b.onclick=()=>{
+      const t = b.dataset.delType;
+      if(state.supports.some(s=>s.type===t)){ alert("Impossible de supprimer : ce type est utilisé par au moins un support."); return; }
+      state.types = state.types.filter(x=>x!==t);
+      saveState(); renderTab('supports');
+    });
+    const ft = document.getElementById('formType');
+    if(ft) ft.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(ft); const nt=(fd.get('newType')||'').trim();
+      if(nt && !state.types.includes(nt)) state.types.push(nt);
+      saveState(); renderTab('supports');
+    };
+    const fx = document.getElementById('formTaux');
+    if(fx) fx.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(fx);
+      const sup = state.supports.find(s=>s.id===fd.get('supportId'));
+      if(sup){ if(!sup.tauxAnnonces) sup.tauxAnnonces={}; sup.tauxAnnonces[fd.get('annee')] = Number(fd.get('taux')); saveState(); renderTab('supports'); }
+    };
+    document.querySelectorAll('[data-del-taux]').forEach(b=>b.onclick=()=>{
+      const [supId, annee] = b.dataset.delTaux.split('|');
+      const sup = state.supports.find(s=>s.id===supId);
+      if(sup && sup.tauxAnnonces){ delete sup.tauxAnnonces[annee]; saveState(); renderTab('supports'); }
+    });
+  }
+
+  if(tab==='mouvements'){
+    const typeSel = document.getElementById('mvtType');
+    if(typeSel) typeSel.onchange = ()=>{ const rf=document.getElementById('rattachementField'); if(rf) rf.style.display = typeSel.value==='interet' ? '' : 'none'; };
+    const f = document.getElementById('formMouvement');
+    if(f) f.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(f);
+      const iso = frToIso(fd.get('date'));
+      if(!iso){ alert('Date invalide : utilise le format JJ/MM/AAAA.'); return; }
+      const type = fd.get('type');
+      const obj={supportId:fd.get('supportId'), date:iso, type, montant:Math.abs(Number(fd.get('montant'))),
+        anneeRattachement: type==='interet' ? Number(fd.get('anneeRattachement')) : null,
+        fraisMontant:fd.get('fraisMontant')?Number(fd.get('fraisMontant')):null, fraisPourcent:fd.get('fraisPourcent')?Number(fd.get('fraisPourcent')):null};
+      lastSupportId = obj.supportId;
+      if(editing.mouvement){ Object.assign(state.mouvements.find(m=>m.id===editing.mouvement), obj); editing.mouvement=null; }
+      else state.mouvements.push({id:uid(), ...obj});
+      saveState(); renderAll();
+    };
+    const cancel = document.getElementById('cancelEditMouvement'); if(cancel) cancel.onclick=()=>{editing.mouvement=null; renderTab('mouvements');};
+    document.querySelectorAll('[data-edit-mouvement]').forEach(b=>b.onclick=()=>{editing.mouvement=b.dataset.editMouvement; renderTab('mouvements');});
+    document.querySelectorAll('[data-del-mouvement]').forEach(b=>b.onclick=()=>{ state.mouvements=state.mouvements.filter(m=>m.id!==b.dataset.delMouvement); saveState(); renderAll(); });
+  }
+
+  if(tab==='actions'){
+    const f = document.getElementById('formAction');
+    if(f) f.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(f);
+      const obj = {supportId:fd.get('supportId'), nom:fd.get('nom'), ticker:(fd.get('ticker')||'').trim()||null,
+        quantite:Number(fd.get('quantite')), pru:Number(fd.get('pru')), coursActuel:Number(fd.get('coursActuel')),
+        coursCible: fd.get('coursCible')?Number(fd.get('coursCible')):null};
+      if(editing.action){ Object.assign(state.actions.find(a=>a.id===editing.action), obj); editing.action=null; }
+      else state.actions.push({id:uid(), ...obj});
+      saveState(); renderAll();
+    };
+    const cancel = document.getElementById('cancelEditAction'); if(cancel) cancel.onclick=()=>{editing.action=null; renderTab('actions');};
+    document.querySelectorAll('[data-edit-action]').forEach(b=>b.onclick=()=>{editing.action=b.dataset.editAction; renderTab('actions');});
+    document.querySelectorAll('[data-del-action]').forEach(b=>b.onclick=()=>{ state.actions=state.actions.filter(a=>a.id!==b.dataset.delAction); saveState(); renderAll(); });
+  }
+
+  if(tab==='valorisations'){
+    const f = document.getElementById('formValo');
+    if(f) f.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(f);
+      const obj={supportId:fd.get('supportId'), date:fd.get('date'), value:Number(fd.get('value'))};
+      if(editing.valo){ Object.assign(state.valorisations.find(v=>v.id===editing.valo), obj); editing.valo=null; }
+      else state.valorisations.push({id:uid(), ...obj});
+      saveState(); renderAll();
+    };
+    const cancel = document.getElementById('cancelEditValo'); if(cancel) cancel.onclick=()=>{editing.valo=null; renderTab('valorisations');};
+    document.querySelectorAll('[data-edit-valo]').forEach(b=>b.onclick=()=>{editing.valo=b.dataset.editValo; renderTab('valorisations');});
+    document.querySelectorAll('[data-del-valo]').forEach(b=>b.onclick=()=>{ state.valorisations=state.valorisations.filter(v=>v.id!==b.dataset.delValo); saveState(); renderAll(); });
+  }
+
+  if(tab==='emprunts'){
+    const f = document.getElementById('formEmprunt');
+    if(f) f.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(f);
+      const obj={nom:fd.get('nom'), capital:Number(fd.get('capital')), taux:Number(fd.get('taux')), duree:Number(fd.get('duree')), dateDebut:fd.get('dateDebut'), type:fd.get('type'), assuranceType:fd.get('assuranceType'), assuranceValeur: fd.get('assuranceValeur')?Number(fd.get('assuranceValeur')):null};
+      if(editing.emprunt){ Object.assign(state.emprunts.find(x=>x.id===editing.emprunt), obj); editing.emprunt=null; }
+      else state.emprunts.push({id:uid(), ...obj});
+      saveState(); renderAll();
+    };
+    const cancel = document.getElementById('cancelEditEmprunt'); if(cancel) cancel.onclick=()=>{editing.emprunt=null; renderTab('emprunts');};
+    document.querySelectorAll('[data-edit-emprunt]').forEach(b=>b.onclick=()=>{editing.emprunt=b.dataset.editEmprunt; renderTab('emprunts');});
+    document.querySelectorAll('[data-del-emprunt]').forEach(b=>b.onclick=()=>{
+      const id=b.dataset.delEmprunt;
+      state.emprunts=state.emprunts.filter(x=>x.id!==id);
+      state.remboursementsAnticipes=state.remboursementsAnticipes.filter(p=>p.empruntId!==id);
+      saveState(); renderAll();
+    });
+    const fp = document.getElementById('formPrepay');
+    if(fp) fp.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(fp);
+      state.remboursementsAnticipes.push({id:uid(), empruntId:fd.get('empruntId'), date:fd.get('date'), montant:Number(fd.get('montant')), mode:fd.get('mode')});
+      saveState(); renderAll();
+    };
+    document.querySelectorAll('[data-del-prepay]').forEach(b=>b.onclick=()=>{ state.remboursementsAnticipes=state.remboursementsAnticipes.filter(p=>p.id!==b.dataset.delPrepay); saveState(); renderAll(); });
+  }
+
+  if(tab==='projections'){
+    document.querySelectorAll('[data-hyp]').forEach(inp=>inp.onchange=()=>{ state.projection.hypotheses[inp.dataset.hyp]=Number(inp.value); saveState(); renderTab('projections'); });
+    const hz = document.getElementById('horizonInput'); if(hz) hz.onchange=()=>{ state.projection.horizonAnnees=Number(hz.value); saveState(); renderTab('projections'); };
+    const fvr = document.getElementById('formVR');
+    if(fvr) fvr.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(fvr);
+      state.projection.versementsRecurrents.push({id:uid(), supportId:fd.get('supportId'), montant:Number(fd.get('montant')), dateFin:fd.get('dateFin')||null, scenario:fd.get('scenario')});
+      saveState(); renderTab('projections');
+    };
+    document.querySelectorAll('[data-del-vr]').forEach(b=>b.onclick=()=>{ state.projection.versementsRecurrents=state.projection.versementsRecurrents.filter(v=>v.id!==b.dataset.delVr); saveState(); renderTab('projections'); });
+    const frs = document.getElementById('formRS');
+    if(frs) frs.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(frs);
+      state.projection.remboursementsSimules.push({id:uid(), empruntId:fd.get('empruntId'), date:fd.get('date'), montant:Number(fd.get('montant')), scenario:fd.get('scenario')});
+      saveState(); renderTab('projections');
+    };
+    document.querySelectorAll('[data-del-rs]').forEach(b=>b.onclick=()=>{ state.projection.remboursementsSimules=state.projection.remboursementsSimules.filter(r=>r.id!==b.dataset.delRs); saveState(); renderTab('projections'); });
+  }
+
+  if(tab==='offres'){
+    const sel = document.getElementById('offresSupportSel');
+    if(sel){ sel.onchange = ()=>renderOfferLinks(sel.value); if(sel.value) renderOfferLinks(sel.value); }
+  }
+}
+
+document.getElementById('driveConnectBtn').onclick = ()=>{ googleAccessToken ? disconnectDrive() : connectDrive(); };
+document.getElementById('switchDossierBtn').onclick = ()=>{ if(confirm('Fermer ce dossier et revenir à la liste des dossiers ?')) lockDossier(); };
+document.getElementById('dossierSettingsBtn').onclick = securityModal;
+document.getElementById('exportBtn').onclick = ()=>{
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'grand-livre-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+document.getElementById('importBtn').onclick = ()=> document.getElementById('importFile').click();
+document.getElementById('importFile').onchange = e=>{
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const imported = JSON.parse(reader.result);
+      if(!confirm('Importer ce fichier remplacera toutes les données actuellement affichées. Continuer ?')) return;
+      state = Object.assign(state, imported);
+      saveState(); renderAll();
+    }catch(err){ alert('Fichier invalide : '+err.message); }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+};
+(async ()=>{
+  await loadIndex();
+  // migration : si un ancien fichier mono-dossier existait avant cette mise à jour, on le récupère dans un premier dossier
+  if(dossierIndex.length===0){
+    const legacy = await storageGetRaw('patrimoine-state');
+    if(legacy){
+      const id = uid()+uid();
+      dossierIndex.push({id, nom:'Mon dossier', hasPassword:false, salt:null, createdAt:new Date().toISOString()});
+      await saveIndex();
+      await storageSetRaw('grandlivre-dossier-'+id, legacy);
+    }
+  }
+  showGate();
+})();
+</script>
+</body>
+</html>
