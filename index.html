@@ -1237,7 +1237,7 @@ function renderCsvColumns(presetEntity){
   document.getElementById('csvColumnsArea').innerHTML = `
     <div class="sub" style="margin-top:10px">${rows.length} ligne(s) de données. Choisis la destination et fais correspondre les colonnes.</div>
     <form class="inline-form" id="csvMapForm" style="margin-top:10px">
-      <div class="field"><label>Destination</label><select name="entity" id="csvEntity" ${presetEntity?'disabled':''}><option value="mouvements" ${presetEntity==='mouvements'?'selected':''}>Mouvements</option><option value="valorisations" ${presetEntity==='valorisations'?'selected':''}>Valorisations</option></select></div>
+      <div class="field"><label>Destination</label><select name="entity" id="csvEntity" ${presetEntity?'disabled':''}><option value="mouvements" ${presetEntity==='mouvements'?'selected':''}>Mouvements</option><option value="valorisations" ${presetEntity==='valorisations'?'selected':''}>Valorisations</option></select>${presetEntity?`<input type="hidden" name="entity" value="${presetEntity}">`:''}</div>
       <div class="field"><label>Support cible</label><select name="supportId">${state.supports.map(s=>`<option value="${s.id}">${s.nom}</option>`).join('')}</select></div>
       <div class="field"><label>Colonne Date</label><select name="colDate">${colOpts(guessDate)}</select></div>
       <div class="field"><label>Format de date</label><select name="dateFormat"><option value="fr">JJ/MM/AAAA</option><option value="iso">AAAA-MM-JJ</option></select></div>
