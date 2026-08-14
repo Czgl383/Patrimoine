@@ -28,8 +28,10 @@ h1,h2,h3{font-family:'Fraunces',serif;font-weight:600;margin:0 0 4px;}
 .mono{font-family:'IBM Plex Mono',monospace;}
 header.top{padding:28px 32px 18px;border-bottom:1px solid var(--line);}
 header.top .brand{margin-bottom:14px;display:flex;align-items:baseline;gap:8px;}
-.brand-hero{font-family:'Fraunces',serif;font-size:17px;font-weight:600;color:var(--text);letter-spacing:.01em;white-space:nowrap;}
-.brand-hero .z{color:var(--gold);font-size:23px;font-weight:700;margin-right:1px;}
+.brand-hero{font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--text);letter-spacing:.01em;white-space:nowrap;}
+.brand-hero .z{color:var(--gold);font-size:27px;font-weight:700;margin-right:1px;}
+.brand-hero-lg{font-family:'Fraunces',serif;font-size:38px;font-weight:600;color:var(--text);letter-spacing:.01em;}
+.brand-hero-lg .z{color:var(--gold);font-size:52px;font-weight:700;margin-right:2px;}
 .ledger-row{display:flex;gap:36px;align-items:baseline;flex-wrap:wrap;}
 .ledger-item .label{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim);margin-bottom:4px;}
 .ledger-item .value{font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:600;}
@@ -68,6 +70,22 @@ tr.dragging{opacity:.4;}
 .scenario-ctx-bar{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;}
 .scenario-ctx-btn{background:var(--panel-2);border:1px solid var(--line);color:var(--text-dim);border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;}
 .scenario-ctx-btn.active{background:var(--ink);color:var(--gold);border-color:var(--gold);font-weight:600;}
+.filter-bar{display:flex;align-items:center;gap:10px;background:var(--panel-2);border:1px solid var(--line);border-radius:24px;padding:8px 16px;margin-bottom:16px;flex-wrap:wrap;}
+.filter-bar-icon{width:15px;height:15px;color:var(--text-dim);flex-shrink:0;display:inline-block;}
+.filter-bar-icon svg{width:100%;height:100%;display:block;}
+.filter-select{background:none;border:none;color:var(--text);font-family:'Inter',sans-serif;font-size:13px;padding:2px 0;min-width:0;width:auto;cursor:pointer;}
+.filter-date{background:none;border:none;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:13px;width:88px;min-width:0;padding:2px 0;}
+.filter-date::placeholder{color:var(--text-dim);font-family:'Inter',sans-serif;}
+.filter-sep{width:1px;height:16px;background:var(--line);}
+.filter-arrow{color:var(--text-dim);font-size:12px;}
+.filter-reset-btn{margin-left:auto;background:none;border:none;color:var(--text-dim);width:22px;height:22px;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;}
+.filter-reset-btn svg{width:12px;height:12px;}
+.filter-reset-btn:hover{background:var(--ink);color:var(--rust);}
+.dash-block{position:relative;}
+.block-drag-handle{position:absolute;top:14px;right:18px;width:20px;height:20px;color:var(--text-dim);cursor:grab;z-index:2;opacity:.5;}
+.block-drag-handle:hover{opacity:1;color:var(--gold);}
+.block-drag-handle svg{width:100%;height:100%;display:block;}
+.dash-block.dragging{opacity:.35;}
 .mobile-summary{display:none;}
 .dashboard-cards{display:none;}
 .support-card{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:10px;}
@@ -113,6 +131,7 @@ button.btn-edit{background:none;border:none;color:var(--gold);font-size:12px;mar
 .scenario-both{background:var(--panel);color:var(--text-dim);border:1px solid var(--line);}
 .scenario-arb{background:rgba(201,166,93,.15);color:var(--gold);border:1px solid var(--gold);}
 .perf-link{background:none;border:none;padding:0;font:inherit;font-family:'IBM Plex Mono',monospace;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;color:inherit;}
+.perf-link.perf-plain{text-decoration:none;}
 .perf-link:hover{color:var(--gold);}
 .brand-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
 .save-status{font-size:11px;letter-spacing:0;text-transform:none;color:var(--text-dim);font-family:'Inter',sans-serif;}
@@ -436,7 +455,7 @@ async function onDriveConnected(){
   try{
     await driveSyncPull();
     updateDriveStatusUI();
-    if(document.getElementById('gateScreen').style.display!=='none') renderGate();
+    if(document.getElementById('gateScreen').style.display!=='none') showGate();
   }catch(e){ console.error('Erreur de synchronisation Drive', e); alert('Erreur de synchronisation avec Drive : '+e.message); }
 }
 
@@ -568,6 +587,34 @@ function enableRowDragReorder(table, onReorder){
     if(after==null) tbody.appendChild(dragEl); else tbody.insertBefore(dragEl, after);
   });
 }
+// Réordonnancement de blocs (cartes) par glisser-déposer, restreint à une poignée dédiée pour ne pas
+// interférer avec les boutons/champs à l'intérieur de chaque carte.
+function enableBlockDragReorder(container, onReorder){
+  if(!container) return;
+  let dragEl = null;
+  const items = ()=> Array.from(container.querySelectorAll(':scope > [data-drag-id]'));
+  items().forEach(item=>{
+    const handle = item.querySelector('.block-drag-handle');
+    if(!handle) return;
+    item.draggable = true;
+    item.addEventListener('dragstart', e=>{
+      if(!handle.contains(e.target)){ e.preventDefault(); return; }
+      dragEl = item; setTimeout(()=>item.classList.add('dragging'),0);
+    });
+    item.addEventListener('dragend', ()=>{ item.classList.remove('dragging'); dragEl=null; onReorder(items().map(r=>r.dataset.dragId)); });
+  });
+  container.addEventListener('dragover', e=>{
+    e.preventDefault();
+    if(!dragEl) return;
+    const after = items().filter(r=>r!==dragEl).reduce((closest, child)=>{
+      const box = child.getBoundingClientRect();
+      const offset = e.clientY - box.top - box.height/2;
+      if(offset<0 && offset>closest.offset) return {offset, element: child};
+      return closest;
+    }, {offset:-Infinity, element:null}).element;
+    if(after==null) container.appendChild(dragEl); else container.insertBefore(dragEl, after);
+  });
+}
 const ICONS = {
   dashboard: svgIcon('<path d="M3 12l9-8 9 8"/><path d="M5 10.5V20h14v-9.5"/><path d="M9.5 20v-5.5h5V20"/>'),
   mouvements: svgIcon('<path d="M4 8h13"/><path d="M14 5l3 3-3 3"/><path d="M20 16H7"/><path d="M10 13l-3 3 3 3"/>'),
@@ -586,6 +633,8 @@ const ICONS = {
   edit: svgIcon('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/>'),
   trash: svgIcon('<path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>'),
   drag: svgIcon('<circle cx="9" cy="6" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="6" r="1.2" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="18" r="1.2" fill="currentColor" stroke="none"/>'),
+  filter: svgIcon('<path d="M4 5h16"/><path d="M7 12h10"/><path d="M10 19h4"/>'),
+  close: svgIcon('<path d="M18 6L6 18"/><path d="M6 6l12 12"/>'),
   lock: svgIcon('<rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/>'),
   folder: svgIcon('<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>'),
   download: svgIcon('<path d="M12 4v10"/><path d="M8 11l4 4 4-4"/><path d="M4 19h16"/>'),
@@ -593,12 +642,14 @@ const ICONS = {
 };
 function effectiveDispoDate(s){
   if(s.dispoMode==='date') return s.dateDisponibilite || null;
-  if(s.dispoMode==='duree' && s.dispoDureeAnnees){
+  if(s.dispoMode==='duree' && s.dispoDureeValeur){
     const dates = state.mouvements.filter(m=>m.supportId===s.id).map(m=>m.date)
       .concat(state.valorisations.filter(v=>v.supportId===s.id).map(v=>v.date)).sort();
     const base = dates[0];
     if(!base) return null;
-    const d = new Date(base); d.setFullYear(d.getFullYear()+Number(s.dispoDureeAnnees));
+    const d = new Date(base);
+    if(s.dispoDureeUnite==='mois') d.setMonth(d.getMonth()+Number(s.dispoDureeValeur));
+    else d.setFullYear(d.getFullYear()+Number(s.dispoDureeValeur));
     return d.toISOString().slice(0,10);
   }
   return null;
@@ -884,15 +935,18 @@ function svgDonut(data, size){
 function svgBarChart(items, opts){
   // items: [{label, value, id}] — value en fraction (ex 0.045 pour 4.5%), id optionnel pour un clic (ouvre le détail)
   opts = opts || {};
-  const width = opts.width||720, height = opts.height||260;
+  const width = opts.width||720, height = opts.height||280;
   const uid = 'bar'+Math.random().toString(36).slice(2,9);
   const vals = items.map(i=>i.value).filter(v=>v!==null && v!==undefined);
   let minV = Math.min(0, ...vals), maxV = Math.max(0.02, ...vals);
   if(minV===maxV){ minV-=0.02; }
+  const span = maxV-minV;
+  // marge en haut/bas pour laisser la place aux étiquettes de valeur au-dessus/en-dessous des barres
+  minV -= span*0.12; maxV += span*0.12;
   const gridVals = [0,0.25,0.5,0.75,1].map(f=> minV + f*(maxV-minV));
   const maxLabelLen = Math.max(...gridVals.map(v=>fmtPct(v).length));
   const paddingLeft = Math.max(50, 14 + maxLabelLen*6.4);
-  const paddingRight = 16, paddingTop = 16, paddingBottom = 30;
+  const paddingRight = 16, paddingTop = 22, paddingBottom = 34;
   const n = items.length;
   const bandW = (width-paddingLeft-paddingRight)/n;
   const yFor = v => height-paddingBottom - ((v-minV)/(maxV-minV))*(height-paddingTop-paddingBottom);
@@ -909,12 +963,16 @@ function svgBarChart(items, opts){
     }
     const y1 = Math.min(zeroY, yFor(it.value)), y2 = Math.max(zeroY, yFor(it.value));
     const color = it.value>=0 ? '#4F9C82' : '#B5563C';
-    return `<rect class="${uid}-bar" data-idx="${i}" x="${(cx-barW/2).toFixed(1)}" y="${y1.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(1,y2-y1).toFixed(1)}" fill="${color}" rx="2" style="cursor:${it.id?'pointer':'default'}"/>`;
+    const valLabelY = it.value>=0 ? y1-6 : y2+13;
+    return `<rect class="${uid}-bar" data-idx="${i}" x="${(cx-barW/2).toFixed(1)}" y="${y1.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(1,y2-y1).toFixed(1)}" fill="${color}" rx="2" style="cursor:${it.id?'pointer':'default'}"/>
+    <text x="${cx.toFixed(1)}" y="${valLabelY.toFixed(1)}" text-anchor="middle" font-size="10" fill="${color}" font-weight="600">${fmtPct(it.value)}</text>`;
   }).join('');
-  const xLabels = items.map((it,i)=>`<text x="${(paddingLeft+bandW*(i+0.5)).toFixed(1)}" y="${height-paddingBottom+16}" text-anchor="middle" font-size="10" fill="#9AA0A8">${it.label}</text>`).join('');
+  // évite le chevauchement des libellés d'axe X quand les colonnes sont étroites
+  const xStep = bandW<34 ? Math.ceil(34/bandW) : 1;
+  const xLabels = items.map((it,i)=> i%xStep===0 ? `<text x="${(paddingLeft+bandW*(i+0.5)).toFixed(1)}" y="${height-paddingBottom+16}" text-anchor="middle" font-size="10" fill="#9AA0A8">${it.label}</text>` : '').join('');
   const html = `
     <div style="position:relative">
-      <svg id="${uid}" width="100%" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="display:block">
+      <svg id="${uid}" width="100%" viewBox="0 0 ${width} ${height}" style="display:block;height:auto;aspect-ratio:${width}/${height}">
         ${gridLines}
         <line x1="${paddingLeft}" y1="${zeroY}" x2="${width-paddingRight}" y2="${zeroY}" stroke="#9AA0A8" stroke-width="1"/>
         ${bars}${xLabels}
@@ -969,11 +1027,11 @@ function svgLineChart(seriesList, opts){
   const legend = seriesList.map(s=>`<span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);margin-right:16px"><span style="width:16px;height:2.5px;background:${s.color};display:inline-block"></span>${s.label}</span>`).join('');
   const html = `<div>${legend}</div>
     <div style="position:relative;margin-top:6px">
-      <svg id="${uid}" width="100%" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="touch-action:pan-y;cursor:crosshair;display:block">
+      <svg id="${uid}" width="100%" viewBox="0 0 ${width} ${height}" style="touch-action:pan-y;cursor:crosshair;display:block;height:auto;aspect-ratio:${width}/${height}">
         ${gridLines}${lines}
         <g id="${uid}-cross" style="display:none">
           <line x1="0" y1="${paddingTop}" x2="0" y2="${height-paddingBottom}" stroke="#C9A65D" stroke-width="1" stroke-dasharray="3,3"/>
-          ${seriesList.map((s,si)=>`<circle id="${uid}-dot${si}" r="3.5" fill="${s.color}" stroke="#12161A" stroke-width="1.5"/>`).join('')}
+          ${seriesList.map((s,si)=>`<circle id="${uid}-dot${si}" cx="0" r="3.5" fill="${s.color}" stroke="#12161A" stroke-width="1.5"/>`).join('')}
         </g>
         ${xLabels}
       </svg>
@@ -998,13 +1056,14 @@ function svgLineChart(seriesList, opts){
       const lines = [`<div style="color:#9AA0A8;margin-bottom:3px">${seriesList[0].points[idx].label}</div>`];
       seriesList.forEach((s,si)=>{
         const p = s.points[idx];
-        dots[si].setAttribute('cx', x); dots[si].setAttribute('cy', yFor(p.y));
+        dots[si].setAttribute('cy', yFor(p.y));
         lines.push(`<div><span style="color:${s.color}">●</span> ${s.label} : ${fmtEUR(p.y)}</div>`);
       });
       tip.innerHTML = lines.join('');
       tip.style.display = 'block';
       tip.style.left = (x/width*100)+'%';
-      tip.style.top = Math.max(paddingTop, Math.min(...seriesList.map(s=>yFor(s.points[idx].y))))+'px';
+      const scale = rect.width/width;
+      tip.style.top = (Math.max(paddingTop, Math.min(...seriesList.map(s=>yFor(s.points[idx].y))))*scale)+'px';
     }
     function hide(){ cross.style.display='none'; tip.style.display='none'; }
     svg.addEventListener('mousemove', e=>showAt(e.clientX));
@@ -1069,7 +1128,8 @@ function openXIRRDetail(supportIds, sinceDate, untilDate, title){
   document.getElementById('closeModalBtn').onclick = closeModal;
   overlay.onclick = e=>{ if(e.target===overlay) closeModal(); };
 }
-function closeModal(){ document.getElementById('modalOverlay').style.display = 'none'; }
+function closeModal(){ document.getElementById('modalOverlay').style.display = 'none'; document.removeEventListener('keydown', escCloseModal); }
+function escCloseModal(e){ if(e.key==='Escape') closeModal(); }
 
 // ---------- IMPORT CSV PARAMÉTRABLE ----------
 function parseCSV(text){
@@ -1206,6 +1266,7 @@ function showModal(html){
   const overlay = document.getElementById('modalOverlay');
   overlay.style.display = 'flex';
   overlay.onclick = e=>{ if(e.target===overlay) closeModal(); };
+  document.addEventListener('keydown', escCloseModal);
   attachDateMasks(content);
 }
 
@@ -1224,14 +1285,14 @@ function showGate(){
 function renderGateLoading(){
   document.getElementById('gateScreen').innerHTML = `
     <div style="max-width:420px;margin:110px auto;padding:0 20px;text-align:center">
-      <div class="brand-hero" style="justify-content:center;display:flex"><span class="z">Z</span>Patrimoine</div>
+      <div class="brand-hero-lg" style="justify-content:center;display:flex"><span class="z">Z</span>Patrimoine</div>
       <div class="sub" style="margin-top:18px">Connexion à Google Drive…</div>
     </div>`;
 }
 function renderGateConnect(){
   document.getElementById('gateScreen').innerHTML = `
     <div style="max-width:420px;margin:100px auto;padding:0 20px;text-align:center">
-      <div class="brand-hero" style="justify-content:center;display:flex"><span class="z">Z</span>Patrimoine</div>
+      <div class="brand-hero-lg" style="justify-content:center;display:flex"><span class="z">Z</span>Patrimoine</div>
       <div class="sub" style="margin:18px 0 22px">Connecte-toi à Google Drive pour charger tes dossiers, sur cet appareil comme sur les autres.</div>
       <button class="btn" type="button" id="gateConnectBtn">Connecter Google Drive</button>
       <div style="margin-top:14px"><button class="btn secondary" type="button" id="gateSkipBtn">Continuer sans Drive (stockage local uniquement)</button></div>
@@ -1278,7 +1339,7 @@ function enterApp(){
 function renderAppUnlock(){
   document.getElementById('gateScreen').innerHTML = `
     <div style="max-width:420px;margin:100px auto;padding:0 20px">
-      <div class="brand-hero"><span class="z">Z</span>Patrimoine</div>
+      <div class="brand-hero-lg"><span class="z">Z</span>Patrimoine</div>
       <div class="sub" style="margin-bottom:20px">Application protégée par mot de passe.</div>
       <form id="appUnlockForm" class="inline-form">
         <div class="field" style="flex:1 1 100%"><label>Mot de passe</label><input type="password" id="appUnlockPassword" name="password" autocomplete="current-password" required autofocus></div>
@@ -1310,7 +1371,7 @@ function renderGate(){
     </div>`).join('');
   document.getElementById('gateScreen').innerHTML = `
     <div style="max-width:540px;margin:60px auto;padding:0 20px">
-      <div class="brand-hero"><span class="z">Z</span>Patrimoine ${appLock.hasPassword?'🔒':''}</div>
+      <div class="brand-hero-lg"><span class="z">Z</span>Patrimoine ${appLock.hasPassword?'🔒':''}</div>
       <div class="sub" style="margin-bottom:16px">Un dossier par personne ou par portefeuille suivi. Un seul mot de passe protège l'ensemble de tes dossiers (réglable ci-dessous).</div>
       <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
         <div><h3 style="margin-bottom:2px">Sécurité</h3><div class="sub" style="margin:0">${appLock.hasPassword? 'Tous les dossiers sont protégés par un mot de passe unique.' : "Aucun mot de passe défini."}</div></div>
@@ -1551,7 +1612,6 @@ function viewDashboard(){
   const allIds = state.supports.map(s=>s.id);
   const portAnnuel = groupXIRRDetail(allIds, sinceDate, untilDate);
   const portGlobal = groupXIRRDetail(allIds, null, null);
-  const perfBtn = (det, title)=> det.rate===null ? '<span class="pill">pas assez de données</span>' : `<button class="perf-link" data-ids="${allIds.join(',')}" data-since="${det===portAnnuel?sinceDate:''}" data-until="${det===portAnnuel?(untilDate||''):''}" data-title="${title}">${fmtPct(det.rate)}</button>`;
 
   function supportRow(s){
     const val = displayValue(s.id, untilDate);
@@ -1670,6 +1730,54 @@ function viewDashboard(){
   </div>` : '';
 
   const assetsNow = totalAssets(), debtsNow = totalDebts();
+  const blockHTML = {
+    perf: `<div class="card">
+    <h3>Performance du portefeuille</h3>
+    <div class="sub">Tous les supports combinés, méthode XIRR</div>
+    <div class="ledger-row" style="gap:32px">
+      <div class="ledger-item"><div class="label">Performance ${dashboardYear}</div><div class="value mono ${portAnnuel.rate===null||portGlobal.rate===null?'':(portAnnuel.rate>portGlobal.rate?'pos':'neg')}" style="font-size:22px">${portAnnuel.rate===null?'<span class="pill">pas assez de données</span>':`<button class="perf-link perf-plain" data-ids="${allIds.join(',')}" data-since="${sinceDate}" data-until="${untilDate||''}" data-title="Performance ${dashboardYear} — Portefeuille">${fmtPct(portAnnuel.rate)}</button>`}</div></div>
+      <div class="ledger-item"><div class="label">Performance globale</div><div class="value mono ${portGlobal.rate>0?'pos':portGlobal.rate<0?'neg':''}" style="font-size:22px">${portGlobal.rate===null?'<span class="pill">pas assez de données</span>':`<button class="perf-link perf-plain" data-ids="${allIds.join(',')}" data-since="" data-until="" data-title="Performance globale — Portefeuille">${fmtPct(portGlobal.rate)}</button>`}</div></div>
+    </div>
+  </div>`,
+    annualbar: `<div class="card">
+    <h3>Performance annuelle du portefeuille</h3>
+    <div class="sub">Une barre par année civile — clique une barre pour le détail du calcul</div>
+    ${renderAnnualPerfChart()}
+  </div>`,
+    pivot: `<div class="card">
+    <h3>Tableau de vérification — performance par support et par année</h3>
+    <div class="sub">Une ligne par support, une colonne par année (méthode XIRR) — téléchargeable pour recouper les calculs</div>
+    <button class="btn secondary" type="button" id="exportPerfPivotBtn">Télécharger en CSV</button>
+  </div>`,
+    evolution: `<div class="card">
+    <h3>Évolution du patrimoine net</h3>
+    <div class="sub">Historique réel, calculé à partir de tes valorisations, mouvements et emprunts enregistrés</div>
+    ${renderEvolutionChart()}
+  </div>`,
+    repartitions: `<div class="grid2">
+    <div class="card"><h3>Répartition par type</h3><div class="sub">Valeur actuelle par catégorie de support</div>${svgDonut(byType)}</div>
+    <div class="card"><h3>Répartition par disponibilité</h3><div class="sub">Ce qui est mobilisable rapidement vs bloqué</div>${svgDonut(byDispo)}</div>
+  </div>`,
+    comparatif: `<div class="card">
+    <h3>Comparatif des supports</h3>
+    <div class="sub">Performance de l'année sélectionnée (${dashboardYear}, modifiable en haut de page) vs performance globale, méthode XIRR</div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:end;margin-bottom:14px">
+      <div class="field"><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);text-transform:none;letter-spacing:0"><input type="checkbox" id="groupByTypeChk" ${dashboardGroupByType?'checked':''}> Regrouper par type</label></div>
+      ${dashboardGroupByType? `<div class="field"><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);text-transform:none;letter-spacing:0"><input type="checkbox" id="groupDetailChk" ${dashboardShowDetail?'checked':''}> Avec détail</label></div>`:''}
+    </div>
+    <table class="dashboard-table"><thead><tr><th>Support</th><th>Type</th><th>Disponibilité</th><th>Valeur</th><th>Perf. ${dashboardYear}</th><th>Perf. globale</th><th>Contrôle SCPI</th></tr></thead>
+    <tbody>${tableBody}</tbody></table>
+    <div class="dashboard-cards">${cardList}</div>
+  </div>`,
+    emprunts: empCard,
+  };
+  if(!state.dashboardOrder) state.dashboardOrder = [];
+  Object.keys(blockHTML).forEach(k=>{ if(!state.dashboardOrder.includes(k)) state.dashboardOrder.push(k); });
+  const orderedBlocks = state.dashboardOrder.map(id=>{
+    const html = blockHTML[id];
+    if(!html) return '';
+    return `<div class="dash-block" data-drag-id="${id}"><span class="block-drag-handle" title="Déplacer ce bloc">${ICONS.drag}</span>${html}</div>`;
+  }).join('');
   return `
   <div class="card mobile-summary">
     <div class="label" style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim)">Patrimoine net</div>
@@ -1680,46 +1788,7 @@ function viewDashboard(){
       <div><div class="label" style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim)">Année</div><div class="year-picker" id="yearPickerBoxMobile"></div></div>
     </div>
   </div>
-  <div class="card">
-    <h3>Performance du portefeuille</h3>
-    <div class="sub">Tous les supports combinés, méthode XIRR</div>
-    <div class="ledger-row" style="gap:32px">
-      <div class="ledger-item"><div class="label">Performance ${dashboardYear}</div><div class="value mono" style="font-size:22px">${perfBtn(portAnnuel,'Performance '+dashboardYear+' — Portefeuille')}</div></div>
-      <div class="ledger-item"><div class="label">Performance globale</div><div class="value mono" style="font-size:22px">${perfBtn(portGlobal,'Performance globale — Portefeuille')}</div></div>
-    </div>
-  </div>
-  <div class="card">
-    <h3>Performance annuelle du portefeuille</h3>
-    <div class="sub">Une barre par année civile — clique une barre pour le détail du calcul</div>
-    ${renderAnnualPerfChart()}
-  </div>
-  <div class="card">
-    <h3>Tableau de vérification — performance par support et par année</h3>
-    <div class="sub">Une ligne par support, une colonne par année — méthode XIRR, pour recouper les calculs</div>
-    <button class="btn secondary" type="button" id="exportPerfPivotBtn" style="margin-bottom:14px">Télécharger en CSV</button>
-    ${renderPerfPivotTable()}
-  </div>
-  <div class="card">
-    <h3>Évolution du patrimoine net</h3>
-    <div class="sub">Historique réel, calculé à partir de tes valorisations, mouvements et emprunts enregistrés</div>
-    ${renderEvolutionChart()}
-  </div>
-  <div class="grid2">
-    <div class="card"><h3>Répartition par type</h3><div class="sub">Valeur actuelle par catégorie de support</div>${svgDonut(byType)}</div>
-    <div class="card"><h3>Répartition par disponibilité</h3><div class="sub">Ce qui est mobilisable rapidement vs bloqué</div>${svgDonut(byDispo)}</div>
-  </div>
-  <div class="card">
-    <h3>Comparatif des supports</h3>
-    <div class="sub">Performance de l'année sélectionnée (${dashboardYear}, modifiable en haut de page) vs performance globale, méthode XIRR</div>
-    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:end;margin-bottom:14px">
-      <div class="field"><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);text-transform:none;letter-spacing:0"><input type="checkbox" id="groupByTypeChk" ${dashboardGroupByType?'checked':''}> Regrouper par type</label></div>
-      ${dashboardGroupByType? `<div class="field"><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);text-transform:none;letter-spacing:0"><input type="checkbox" id="groupDetailChk" ${dashboardShowDetail?'checked':''}> Avec détail</label></div>`:''}
-    </div>
-    <table class="dashboard-table"><thead><tr><th>Support</th><th>Type</th><th>Disponibilité</th><th>Valeur</th><th>Perf. ${dashboardYear}</th><th>Perf. globale</th><th>Contrôle SCPI</th></tr></thead>
-    <tbody>${tableBody}</tbody></table>
-    <div class="dashboard-cards">${cardList}</div>
-  </div>
-  ${empCard}`;
+  <div id="dashboardBlocksContainer">${orderedBlocks}</div>`;
 }
 
 // ---- SUPPORTS ----
@@ -1734,10 +1803,18 @@ function supportFormHTML(id){
       <div class="field"><label>Accès aux fonds</label><select name="dispoMode" id="dispoModeSel">
         <option value="immediat" ${!e||!e.dispoMode||e.dispoMode==='immediat'?'selected':''}>Immédiat</option>
         <option value="date" ${e&&e.dispoMode==='date'?'selected':''}>Date exacte</option>
-        <option value="duree" ${e&&e.dispoMode==='duree'?'selected':''}>Nombre d'années avant dispo.</option>
+        <option value="duree" ${e&&e.dispoMode==='duree'?'selected':''}>Durée avant disponibilité</option>
       </select></div>
       <div class="field" id="dispoDateField" style="${e&&e.dispoMode==='date'?'':'display:none'}"><label>Date de disponibilité</label>${dateInputHTML('dateDisponibilite', e&&e.dateDisponibilite?e.dateDisponibilite:null, false)}</div>
-      <div class="field" id="dispoDureeField" style="${e&&e.dispoMode==='duree'?'':'display:none'}"><label>Années avant disponibilité</label><input name="dispoDureeAnnees" type="number" inputmode="numeric" min="0" step="1" value="${e&&e.dispoDureeAnnees?e.dispoDureeAnnees:''}"></div>
+      <div class="field" id="dispoDureeField" style="${e&&e.dispoMode==='duree'?'':'display:none'}"><label>Durée avant disponibilité</label>
+        <div style="display:flex;gap:6px">
+          <input name="dispoDureeValeur" type="number" inputmode="numeric" min="0" step="1" style="width:80px" value="${e&&e.dispoDureeValeur?e.dispoDureeValeur:''}">
+          <select name="dispoDureeUnite" style="width:auto">
+            <option value="mois" ${e&&e.dispoDureeUnite==='mois'?'selected':''}>mois</option>
+            <option value="annees" ${!e||e.dispoDureeUnite!=='mois'?'selected':''}>années</option>
+          </select>
+        </div>
+      </div>
       <div class="field"><label>Délai jouissance (mois, SCPI)</label><input name="delaiJouissance" type="number" inputmode="numeric" min="0" value="${e?(e.delaiJouissance||0):0}"></div>
       <button class="btn" type="submit">${e?'Enregistrer':'Ajouter'}</button>
       <button class="btn secondary" type="button" id="cancelSupportModal">Annuler</button>
@@ -1754,14 +1831,15 @@ function openSupportModal(id){
   document.getElementById('formSupport').onsubmit = e=>{
     e.preventDefault(); const fd = new FormData(e.target);
     const dispoMode = fd.get('dispoMode')||'immediat';
-    let dateDisponibilite = null, dispoDureeAnnees = null;
+    let dateDisponibilite = null, dispoDureeValeur = null, dispoDureeUnite = null;
     if(dispoMode==='date'){
       const dispoRaw = (fd.get('dateDisponibilite')||'').trim();
       if(dispoRaw){ dateDisponibilite = frToIso(dispoRaw); if(!dateDisponibilite){ alert('Date de disponibilité invalide : utilise le format JJ/MM/AAAA.'); return; } }
     } else if(dispoMode==='duree'){
-      dispoDureeAnnees = fd.get('dispoDureeAnnees') ? Number(fd.get('dispoDureeAnnees')) : null;
+      dispoDureeValeur = fd.get('dispoDureeValeur') ? Number(fd.get('dispoDureeValeur')) : null;
+      dispoDureeUnite = fd.get('dispoDureeUnite')||'annees';
     }
-    const obj = {nom:fd.get('nom'), type:fd.get('type'), disponibilite:fd.get('disponibilite'), dispoMode, dateDisponibilite, dispoDureeAnnees, delaiJouissance:Number(fd.get('delaiJouissance')||0)};
+    const obj = {nom:fd.get('nom'), type:fd.get('type'), disponibilite:fd.get('disponibilite'), dispoMode, dateDisponibilite, dispoDureeValeur, dispoDureeUnite, delaiJouissance:Number(fd.get('delaiJouissance')||0)};
     if(id){ Object.assign(state.supports.find(s=>s.id===id), obj); }
     else state.supports.push({id:uid(), tauxAnnonces:{}, ...obj});
     saveState(); closeModal(); renderTab('supports');
@@ -1872,9 +1950,17 @@ function openMouvementModal(id){
       anneeRattachement: type==='interet' ? Number(fd.get('anneeRattachement')) : null,
       fraisMontant:fd.get('fraisMontant')?Number(fd.get('fraisMontant')):null, fraisPourcent:fd.get('fraisPourcent')?Number(fd.get('fraisPourcent')):null};
     lastSupportId = obj.supportId;
-    if(id){ Object.assign(state.mouvements.find(m=>m.id===id), obj); }
-    else state.mouvements.push({id:uid(), ...obj});
-    saveState(); closeModal(); renderAll();
+    if(id){ Object.assign(state.mouvements.find(m=>m.id===id), obj); saveState(); closeModal(); renderAll(); }
+    else{
+      state.mouvements.push({id:uid(), ...obj});
+      saveState(); renderAll();
+      openMouvementModal(null); // reste ouvert pour enchaîner une nouvelle saisie ; Échap pour quitter
+      const conf = document.createElement('div');
+      conf.textContent = '✓ Mouvement ajouté';
+      conf.style.cssText = 'color:var(--teal);font-size:12px;margin-top:-8px;margin-bottom:10px';
+      document.getElementById('formMouvement').insertAdjacentElement('beforebegin', conf);
+      setTimeout(()=>conf.remove(), 2000);
+    }
   };
 }
 function viewMouvements(){
@@ -1903,13 +1989,16 @@ function viewMouvements(){
     <button class="btn" type="button" id="openAddMouvementBtn">+ Ajouter un mouvement</button>
   </div>
   <div class="card" style="margin-top:-14px">
-    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:end;margin-bottom:14px">
-      <div class="field"><label>Filtrer par support</label><select id="mvtFilterSupport"><option value="">Tous les supports</option>${state.supports.map(s=>`<option value="${s.id}" ${mouvementsFilter.supportId===s.id?'selected':''}>${s.nom}</option>`).join('')}</select></div>
-      <div class="field"><label>Depuis</label><input type="text" inputmode="numeric" class="date-mask" id="mvtFilterSince" placeholder="JJ/MM/AAAA" maxlength="10" value="${mouvementsFilter.since?isoToFr(mouvementsFilter.since):''}"></div>
-      <div class="field"><label>Jusqu'au</label><input type="text" inputmode="numeric" class="date-mask" id="mvtFilterUntil" placeholder="JJ/MM/AAAA" maxlength="10" value="${mouvementsFilter.until?isoToFr(mouvementsFilter.until):''}"></div>
-      <button class="btn secondary" type="button" id="mvtFilterReset">Réinitialiser</button>
+    <div class="filter-bar">
+      <span class="filter-bar-icon">${ICONS.filter}</span>
+      <select id="mvtFilterSupport" class="filter-select"><option value="">Tous les supports</option>${state.supports.map(s=>`<option value="${s.id}" ${mouvementsFilter.supportId===s.id?'selected':''}>${s.nom}</option>`).join('')}</select>
+      <span class="filter-sep"></span>
+      <input type="text" inputmode="numeric" class="date-mask filter-date" id="mvtFilterSince" placeholder="Depuis" maxlength="10" value="${mouvementsFilter.since?isoToFr(mouvementsFilter.since):''}">
+      <span class="filter-arrow">→</span>
+      <input type="text" inputmode="numeric" class="date-mask filter-date" id="mvtFilterUntil" placeholder="Jusqu'au" maxlength="10" value="${mouvementsFilter.until?isoToFr(mouvementsFilter.until):''}">
+      ${(mouvementsFilter.supportId||mouvementsFilter.since||mouvementsFilter.until)? `<button type="button" class="filter-reset-btn" id="mvtFilterReset" title="Réinitialiser les filtres">${ICONS.close}</button>`:''}
     </div>
-    ${filtered.length!==state.mouvements.length? `<div class="sub" style="margin-bottom:10px">${filtered.length} mouvement(s) affiché(s) sur ${state.mouvements.length}</div>`:''}
+    ${filtered.length!==state.mouvements.length? `<div class="sub" style="margin:10px 0">${filtered.length} mouvement(s) affiché(s) sur ${state.mouvements.length}</div>`:''}
     ${filtered.length? `<table><thead><tr><th>Date</th><th>Support</th><th>Type</th><th>Montant</th><th>Frais</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : `<div class="empty">${state.mouvements.length?'Aucun mouvement ne correspond à ce filtre.':'Aucun mouvement.'}</div>`}
   </div>`;
 }
@@ -1925,22 +2014,27 @@ async function fetchStockPrice(ticker){
   const lines = text.trim().split('\n');
   if(lines.length<2) throw new Error('Réponse vide');
   const cols = lines[1].split(',');
+  if(cols[1]==='N/D') throw new Error('Ticker inconnu de la source (vérifie le suffixe de marché)');
   const close = parseFloat(cols[6]);
   if(!close || isNaN(close)) throw new Error('Ticker non reconnu');
-  return close;
+  return {price: close, date: cols[1]};
 }
 async function refreshActionPrice(id){
   const a = state.actions.find(x=>x.id===id);
   if(!a || !a.ticker){ alert("Renseigne un ticker pour cette ligne avant de rafraîchir (ex. AAPL.US, MC.FR)."); return; }
-  try{ a.coursActuel = await fetchStockPrice(a.ticker); saveState(); renderTab('actions'); }
-  catch(err){ alert(`Impossible de récupérer le cours pour "${a.ticker}" : ${err.message}. Vérifie le format du ticker ou mets à jour manuellement.`); }
+  try{
+    const result = await fetchStockPrice(a.ticker);
+    a.coursActuel = result.price;
+    saveState(); renderTab('actions');
+    alert(`Cours récupéré pour "${a.ticker}" : ${fmtEUR(result.price)} (relevé du ${result.date||'jour même'}). Vérifie que ce chiffre correspond bien à ce que tu attendais avant de t'y fier.`);
+  }catch(err){ alert(`Impossible de récupérer le cours pour "${a.ticker}" : ${err.message}. Vérifie le format du ticker (ex. AAPL.US, MC.FR, ^FCHI) ou mets à jour manuellement.`); }
 }
 async function refreshAllActionPrices(){
   const withTicker = state.actions.filter(a=>a.ticker);
   if(withTicker.length===0){ alert('Aucune ligne avec un ticker renseigné.'); return; }
   let ok=0, fail=0;
   for(const a of withTicker){
-    try{ a.coursActuel = await fetchStockPrice(a.ticker); ok++; }catch(e){ fail++; }
+    try{ const r = await fetchStockPrice(a.ticker); a.coursActuel = r.price; ok++; }catch(e){ fail++; }
   }
   saveState(); renderTab('actions');
   alert(`${ok} cours mis à jour${fail? `, ${fail} échec(s) (ticker non reconnu ou service indisponible)`:''}.`);
@@ -1950,7 +2044,7 @@ function actionFormHTML(id){
   const supOpts = ()=>state.supports.map(sp=>`<option value="${sp.id}" ${e&&e.supportId===sp.id?'selected':''}>${sp.nom} (${sp.type})</option>`).join('');
   return `
     <h3>${e?"Modifier la ligne":'Ajouter une action'}</h3>
-    <div class="helptext">La valeur de ces positions s'ajoute automatiquement à la valorisation "aujourd'hui" du support parent. Le ticker doit inclure le suffixe de marché pour le rafraîchissement automatique du cours (ex. <code>AAPL.US</code>, <code>MC.FR</code>).</div>
+    <div class="helptext">La valeur de ces positions s'ajoute automatiquement à la valorisation "aujourd'hui" du support parent. Le ticker doit inclure le suffixe de marché pour le rafraîchissement automatique du cours — ex. <code>AAPL.US</code> (Apple, Nasdaq), <code>MC.FR</code> (LVMH, Paris), <code>^FCHI</code> (CAC 40). <a href="https://stooq.com/q/" target="_blank" rel="noopener" style="color:var(--gold)">Chercher le bon ticker sur Stooq ↗</a>. Après un rafraîchissement, un message confirme le cours et sa date — vérifie qu'il correspond bien avant de t'y fier.</div>
     <form class="inline-form" id="formAction">
       <div class="field"><label>Support (PEA / CTO…)</label><select name="supportId">${supOpts()}</select></div>
       <div class="field"><label>Nom</label><input name="nom" required value="${e?e.nom:''}"></div>
@@ -2248,7 +2342,6 @@ function viewProjections(){
       </select></div>
       <button class="btn secondary" type="button" id="exportProjectionPivotBtn">Télécharger en CSV</button>
     </div>
-    ${renderProjectionPivotTable()}
   </div>`;
 }
 
@@ -2515,6 +2608,10 @@ function attachHandlers(tab){
     if(evolutionChartActivate) evolutionChartActivate();
     if(annualPerfChartActivate) annualPerfChartActivate();
     const exportPivot = document.getElementById('exportPerfPivotBtn'); if(exportPivot) exportPivot.onclick = exportPerfPivotCSV;
+    enableBlockDragReorder(document.getElementById('dashboardBlocksContainer'), ids=>{
+      state.dashboardOrder = ids;
+      saveState();
+    });
     document.querySelectorAll('.perf-link').forEach(b=>b.onclick=()=>{
       openXIRRDetail(b.dataset.ids.split(','), b.dataset.since||null, b.dataset.until||null, b.dataset.title);
     });
