@@ -293,7 +293,8 @@ function defaultState(){
     supports: [], mouvements: [], valorisations: [], emprunts: [], remboursementsAnticipes: [], actions: [],
     types: ['Assurance-vie','PEA','Compte-titres','Livret/épargne','Immobilier','SCPI','PER','FIP','PEE','Crypto','Autre'],
     dispos: ['Liquide','Disponible (fiscalité dégressive)','Bloqué à échéance connue'],
-    projection: { horizonAnnees: 10, hypotheses: {}, versementsRecurrents: [], remboursementsSimules: [], scenarios: [] }
+    projection: { horizonAnnees: 10, hypotheses: {}, versementsRecurrents: [], remboursementsSimules: [], scenarios: [] },
+    importHistory: []
   };
 }
 async function loadIndex(){
@@ -1139,10 +1140,20 @@ function parseCSV(text, forceDelim){
   const lines = text.split(/\r?\n/).filter(l=>l.trim().length>0);
   let delim = forceDelim;
   if(!delim || delim==='auto'){
-    // détection sur plusieurs lignes (pas seulement la première, qui peut être un titre/séparateur sans virgule ni point-virgule)
-    const sample = lines.slice(0, Math.min(6, lines.length));
-    const scoreFor = d => sample.reduce((s,l)=> s + l.split(d).length, 0);
-    delim = scoreFor(';') >= scoreFor(',') ? ';' : ',';
+    // Le bon séparateur donne un nombre de colonnes STABLE sur chaque ligne. Une simple comparaison du nombre
+    // d'occurrences se fait piéger par les décimales à la française ("1234,56") qui contiennent aussi des virgules.
+    const sample = lines.slice(0, Math.min(10, lines.length));
+    const consistency = d => {
+      const counts = sample.map(l=>l.split(d).length);
+      const freq = {};
+      counts.forEach(c=>freq[c]=(freq[c]||0)+1);
+      const maxFreq = Math.max(...Object.values(freq));
+      return {score: maxFreq/counts.length, cols: Math.max(...counts)};
+    };
+    const semi = consistency(';'), comma = consistency(',');
+    if(semi.cols>1 && semi.score>=0.6 && (semi.score>comma.score || comma.cols<=1)) delim = ';';
+    else if(comma.cols>1 && comma.score>=0.6) delim = ',';
+    else delim = semi.cols>=comma.cols ? ';' : ',';
   }
   const allRows = lines.map(l=> l.split(delim).map(c=>c.trim().replace(/^"|"$/g,'')));
   return {delim, allRows};
@@ -1197,6 +1208,7 @@ function currentCsvColumns(){
 }
 function renderCsvMapping(presetEntity){
   if((csvImportData.allRows||[]).length===0){ document.getElementById('csvMappingArea').innerHTML = '<div class="empty">Fichier vide ou illisible.</div>'; return; }
+  const previewRows = csvImportData.allRows.slice(0,4).map((r,i)=>`<tr${i===0?' style="color:var(--gold)"':''}><td class="label-cell" style="font-size:10px">${i===0?'Ligne 1':'Ligne '+(i+1)}</td>${r.map(c=>`<td>${c||'<span style="color:var(--text-dim)">(vide)</span>'}</td>`).join('')}</tr>`).join('');
   document.getElementById('csvMappingArea').innerHTML = `
     <div class="sub" style="margin-top:14px">${csvImportData.allRows.length} ligne(s) détectée(s) dans le fichier (séparateur détecté : "${csvImportData.delim}").</div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:10px">
@@ -1209,6 +1221,8 @@ function renderCsvMapping(presetEntity){
         </select>
       </label>
     </div>
+    <div class="sub" style="margin-top:12px">Aperçu brut (vérifie que chaque valeur tombe dans sa propre colonne — sinon change le séparateur ci-dessus) :</div>
+    <div class="table-scroll"><table style="margin-top:6px"><tbody>${previewRows}</tbody></table></div>
     <div id="csvColumnsArea"></div>`;
   document.getElementById('csvHasHeader').onchange = renderCsvColumns;
   document.getElementById('csvDelimSel').onchange = e=>{ csvImportData = parseCSV(csvRawText, e.target.value); renderCsvMapping(presetEntity); };
@@ -1304,15 +1318,46 @@ function renderCsvPreviewTable(){
 function confirmCsvImport(){
   const {entity, supportId, parsed} = csvPendingImport;
   const toImport = parsed.filter(p=>!p.duplicate);
+  const batchId = uid()+uid();
   if(entity==='mouvements'){
-    toImport.forEach(p=> state.mouvements.push({id:uid(), supportId, date:p.date, type:p.type, montant:p.montant, anneeRattachement: p.type==='interet'?p.anneeRattachement:null, fraisMontant:null, fraisPourcent:null}));
+    toImport.forEach(p=> state.mouvements.push({id:uid(), supportId, date:p.date, type:p.type, montant:p.montant, anneeRattachement: p.type==='interet'?p.anneeRattachement:null, fraisMontant:null, fraisPourcent:null, importBatchId:batchId}));
     lastSupportId = supportId;
   } else {
-    toImport.forEach(p=> state.valorisations.push({id:uid(), supportId, date:p.date, value:p.value}));
+    toImport.forEach(p=> state.valorisations.push({id:uid(), supportId, date:p.date, value:p.value, importBatchId:batchId}));
   }
+  if(!state.importHistory) state.importHistory = [];
+  state.importHistory.unshift({id:batchId, date:new Date().toISOString(), entity, supportId, count:toImport.length});
   saveState();
   closeModal();
   renderAll();
+}
+function renderImportHistoryCard(){
+  const history = state.importHistory||[];
+  if(history.length===0) return '';
+  const rows = history.map(h=>{
+    const sup = state.supports.find(s=>s.id===h.supportId);
+    const stillPresent = (h.entity==='mouvements'?state.mouvements:state.valorisations).some(x=>x.importBatchId===h.id);
+    if(!stillPresent) return '';
+    return `<tr>
+      <td>${new Date(h.date).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})}</td>
+      <td class="label-cell">${h.entity==='mouvements'?'Mouvements':'Valorisations'}</td>
+      <td class="label-cell">${sup?sup.nom:'?'}</td>
+      <td>${h.count} ligne(s)</td>
+      <td style="white-space:nowrap">
+        <select class="import-reassign" data-batch="${h.id}" data-entity="${h.entity}" style="width:auto;font-size:12px">
+          <option value="">Changer de support…</option>
+          ${state.supports.filter(s=>s.id!==h.supportId).map(s=>`<option value="${s.id}">${s.nom}</option>`).join('')}
+        </select>
+        <button type="button" class="icon-btn danger" data-del-import="${h.id}" data-entity="${h.entity}" title="Supprimer cet import">${ICONS.trash}</button>
+      </td>
+    </tr>`;
+  }).filter(Boolean).join('');
+  if(!rows) return '';
+  return `<div class="card">
+    <h3>Historique des imports CSV</h3>
+    <div class="sub">Retrouve chaque import pour corriger le support ou tout annuler en cas d'erreur</div>
+    <div class="table-scroll"><table><thead><tr><th>Date</th><th>Destination</th><th>Support</th><th>Lignes</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+  </div>`;
 }
 function showModal(html){
   const content = document.getElementById('modalContent');
@@ -2075,7 +2120,8 @@ function viewMouvements(){
     </div>
     ${filtered.length!==state.mouvements.length? `<div class="sub" style="margin:10px 0">${filtered.length} mouvement(s) affiché(s) sur ${state.mouvements.length}</div>`:''}
     ${filtered.length? `<table><thead><tr><th>Date</th><th>Support</th><th>Type</th><th>Montant</th><th>Frais</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : `<div class="empty">${state.mouvements.length?'Aucun mouvement ne correspond à ce filtre.':'Aucun mouvement.'}</div>`}
-  </div>`;
+  </div>
+  ${renderImportHistoryCard()}`;
 }
 
 // ---- ACTIONS ----
@@ -2779,6 +2825,25 @@ function attachHandlers(tab){
   if(tab==='mouvements'){
     const openBtn = document.getElementById('openAddMouvementBtn'); if(openBtn) openBtn.onclick = ()=>openMouvementModal(null);
     const openCsvBtn = document.getElementById('openImportCsvMvtBtn'); if(openCsvBtn) openCsvBtn.onclick = ()=>openCsvImportModal('mouvements');
+    document.querySelectorAll('.import-reassign').forEach(sel=>{
+      sel.onchange = ()=>{
+        if(!sel.value) return;
+        const batchId = sel.dataset.batch, entity = sel.dataset.entity;
+        const list = entity==='mouvements' ? state.mouvements : state.valorisations;
+        list.forEach(x=>{ if(x.importBatchId===batchId) x.supportId = sel.value; });
+        const h = state.importHistory.find(x=>x.id===batchId); if(h) h.supportId = sel.value;
+        saveState(); renderAll();
+      };
+    });
+    document.querySelectorAll('[data-del-import]').forEach(b=>b.onclick=()=>{
+      const batchId = b.dataset.delImport, entity = b.dataset.entity;
+      const h = state.importHistory.find(x=>x.id===batchId);
+      if(!confirm(`Supprimer les ${h?h.count:''} ligne(s) de cet import ? Cette action est irréversible.`)) return;
+      if(entity==='mouvements') state.mouvements = state.mouvements.filter(x=>x.importBatchId!==batchId);
+      else state.valorisations = state.valorisations.filter(x=>x.importBatchId!==batchId);
+      state.importHistory = state.importHistory.filter(x=>x.id!==batchId);
+      saveState(); renderAll();
+    });
     const fSup = document.getElementById('mvtFilterSupport');
     if(fSup) fSup.onchange = ()=>{ mouvementsFilter.supportId = fSup.value; renderTab('mouvements'); };
     const fSince = document.getElementById('mvtFilterSince');
