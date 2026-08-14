@@ -1294,30 +1294,19 @@ function showCsvPreview(){
 function renderCsvPreviewTable(){
   const { entity, parsed, skipped } = csvPendingImport;
   const dupCount = parsed.filter(p=>p.duplicate).length;
-  const rowsHTML = parsed.map((p,i)=> entity==='mouvements' ? `<tr class="${p.duplicate?'csv-dup-row':''}">
+  const rowsHTML = parsed.slice(0,50).map(p=> entity==='mouvements' ? `<tr class="${p.duplicate?'csv-dup-row':''}">
       <td>${fmtDate(p.date)}</td>
-      <td><select class="csv-row-type" data-idx="${i}">
-        <option value="versement" ${p.type==='versement'?'selected':''}>Versement</option>
-        <option value="retrait" ${p.type==='retrait'?'selected':''}>Retrait</option>
-        <option value="interet" ${p.type==='interet'?'selected':''}>Intérêts perçus</option>
-      </select></td>
+      <td class="label-cell">${p.type==='versement'?'Versement':p.type==='retrait'?'Retrait':'Intérêts perçus'}</td>
       <td>${fmtEUR(p.montant)}</td>
-      <td>${p.type==='interet'? `<input type="number" inputmode="numeric" class="csv-row-annee" data-idx="${i}" value="${p.anneeRattachement}" style="width:75px">` : '—'}</td>
       <td>${p.duplicate? '<span class="pill">doublon détecté</span>' : ''}</td>
     </tr>` : `<tr class="${p.duplicate?'csv-dup-row':''}"><td>${fmtDate(p.date)}</td><td>${fmtEUR(p.value)}</td><td>${p.duplicate? '<span class="pill">doublon détecté</span>' : ''}</td></tr>`
   ).join('');
   const toImport = parsed.filter(p=>!p.duplicate).length;
   document.getElementById('csvPreview').innerHTML = `
     <div class="sub" style="margin-top:14px;color:var(--gold);font-weight:600">Destination : ${entity==='mouvements'?'Mouvements':'Valorisations'}</div>
-    <div class="sub" style="margin-top:4px">${parsed.length} ligne(s) reconnue(s)${skipped?`, ${skipped} ignorée(s) (date ou montant illisible)`:''}${dupCount?`, ${dupCount} doublon(s) détecté(s) (déjà présents, exclus par défaut)`:''}. ${entity==='mouvements'?"Ajuste le type et l'année de rattachement des intérêts si besoin :":'Aperçu :'}</div>
-    ${parsed.length? `<div class="table-scroll" style="max-height:320px;overflow-y:auto"><table><thead><tr>${entity==='mouvements'?'<th>Date</th><th>Type</th><th>Montant</th><th>Année rattach.</th><th></th>':'<th>Date</th><th>Valeur</th><th></th>'}</tr></thead><tbody>${rowsHTML}</tbody></table></div>
+    <div class="sub" style="margin-top:4px">${parsed.length} ligne(s) reconnue(s)${skipped?`, ${skipped} ignorée(s) (date ou montant illisible)`:''}${dupCount?`, ${dupCount} doublon(s) détecté(s) (déjà présents, exclus par défaut)`:''}.${entity==='mouvements'?' Le type (Versement/Retrait) est déduit du signe du montant ; corrige au cas par cas après import (crayon sur chaque ligne) si certaines sont en réalité des intérêts.':''}</div>
+    ${parsed.length? `<div class="table-scroll" style="max-height:320px;overflow-y:auto"><table><thead><tr>${entity==='mouvements'?'<th>Date</th><th>Type</th><th>Montant</th><th></th>':'<th>Date</th><th>Valeur</th><th></th>'}</tr></thead><tbody>${rowsHTML}</tbody></table>${parsed.length>50?`<div class="sub" style="margin-top:6px">Aperçu limité aux 50 premières lignes — les ${parsed.length-50} suivantes seront importées aussi.</div>`:''}</div>
     <button class="btn" type="button" id="csvConfirmBtn" style="margin-top:12px">Importer ${toImport} ligne(s)${dupCount?` (${dupCount} doublon(s) ignoré(s))`:''}</button>` : '<div class="empty">Aucune ligne valide avec ce mappage — vérifie les colonnes choisies.</div>'}`;
-  document.querySelectorAll('.csv-row-type').forEach(sel=>{
-    sel.onchange = ()=>{ const i=Number(sel.dataset.idx); csvPendingImport.parsed[i].type = sel.value; if(sel.value==='interet' && !csvPendingImport.parsed[i].anneeRattachement) csvPendingImport.parsed[i].anneeRattachement = Number(csvPendingImport.parsed[i].date.slice(0,4)); renderCsvPreviewTable(); };
-  });
-  document.querySelectorAll('.csv-row-annee').forEach(inp=>{
-    inp.onchange = ()=>{ csvPendingImport.parsed[Number(inp.dataset.idx)].anneeRattachement = Number(inp.value); };
-  });
   const cb = document.getElementById('csvConfirmBtn'); if(cb) cb.onclick = confirmCsvImport;
 }
 function confirmCsvImport(){
