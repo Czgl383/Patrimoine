@@ -181,6 +181,7 @@ button.btn-edit{background:none;border:none;color:var(--gold);font-size:12px;mar
 <body>
 
 <div id="gateScreen"></div>
+<div id="versionBadge" class="version-badge"></div>
 
 <header class="top">
   <div class="brand-row">
@@ -2955,7 +2956,7 @@ function attachHandlers(tab){
 
 document.getElementById('driveConnectBtn').onclick = ()=>{ googleAccessToken ? disconnectDrive() : connectDrive(); };
 document.querySelectorAll('[data-icon]').forEach(el=>{ if(ICONS[el.dataset.icon]) el.innerHTML = ICONS[el.dataset.icon]; });
-document.getElementById('versionBadge').textContent = 'v'+APP_VERSION;
+const versionBadgeEl = document.getElementById('versionBadge'); if(versionBadgeEl) versionBadgeEl.textContent = 'v'+APP_VERSION;
 document.getElementById('moreTabBtn').onclick = openMoreSheet;
 document.getElementById('settingsMenuBtn').onclick = openSettingsMenu;
 document.getElementById('switchDossierBtn').onclick = ()=>{ if(confirm('Fermer ce dossier et revenir à la liste des dossiers ?')) lockDossier(); };
@@ -3015,6 +3016,5 @@ window.addEventListener('pagehide', ()=>{ if(drivePushPending) drivePushFlush();
   }, 3000);
 })();
 </script>
-<div id="versionBadge" class="version-badge"></div>
 </body>
 </html>
