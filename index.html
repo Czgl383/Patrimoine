@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<title>Grand Livre — Suivi patrimonial</title>
+<title>Z Patrimoine</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -27,18 +27,28 @@ body{margin:0;background:var(--ink);color:var(--text);font-family:'Inter',sans-s
 h1,h2,h3{font-family:'Fraunces',serif;font-weight:600;margin:0 0 4px;}
 .mono{font-family:'IBM Plex Mono',monospace;}
 header.top{padding:28px 32px 18px;border-bottom:1px solid var(--line);}
-header.top .brand{font-family:'Fraunces',serif;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:14px;}
+header.top .brand{margin-bottom:14px;display:flex;align-items:baseline;gap:8px;}
+.brand-hero{font-family:'Fraunces',serif;font-size:17px;font-weight:600;color:var(--text);letter-spacing:.01em;white-space:nowrap;}
+.brand-hero .z{color:var(--gold);font-size:23px;font-weight:700;margin-right:1px;}
 .ledger-row{display:flex;gap:36px;align-items:baseline;flex-wrap:wrap;}
 .ledger-item .label{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim);margin-bottom:4px;}
 .ledger-item .value{font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:600;}
 .ledger-item.net .value{color:var(--gold);font-size:38px;}
+.year-picker{display:flex;align-items:center;gap:4px;background:var(--panel-2);border:1px solid var(--line);border-radius:20px;padding:3px;width:fit-content;}
+.year-picker button{background:none;border:none;color:var(--text-dim);font-size:17px;width:26px;height:26px;border-radius:50%;cursor:pointer;line-height:1;}
+.year-picker button:hover:not(:disabled){background:var(--ink);color:var(--gold);}
+.year-picker button:disabled{opacity:.25;cursor:default;}
+.year-picker-value{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;color:var(--gold);min-width:44px;text-align:center;}
 .ledger-item.debt .value{color:var(--rust);}
 .ledger-item.asset .value{color:var(--teal);}
 nav.tabs{display:flex;gap:2px;padding:0 32px;border-bottom:1px solid var(--line);background:var(--panel);overflow-x:auto;}
 nav.tabs button{background:none;border:none;color:var(--text-dim);font-family:'Inter',sans-serif;font-size:13px;font-weight:500;padding:14px 16px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;}
 nav.tabs button.active{color:var(--text);border-bottom-color:var(--gold);}
 .bottom-tabs{display:none;}
-.mobile-only-btn{display:none;background:none;border:1px solid var(--line);color:var(--text);border-radius:6px;width:34px;height:34px;font-size:18px;cursor:pointer;line-height:1;}
+.settings-btn{display:inline-flex;align-items:center;gap:6px;background:none;border:1px solid var(--line);color:var(--text-dim);border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;}
+.settings-btn:hover{color:var(--text);border-color:var(--gold);}
+.settings-btn .icon{width:15px;height:15px;display:inline-block;}
+.settings-btn .icon svg{width:100%;height:100%;}
 .more-row{display:block;width:100%;text-align:left;background:var(--panel-2);border:1px solid var(--line);color:var(--text);padding:13px 14px;border-radius:6px;font-size:14px;cursor:pointer;font-family:'Inter',sans-serif;}
 .more-row:active{background:var(--ink);}
 .mobile-summary{display:none;}
@@ -140,17 +150,18 @@ button.btn-edit{background:none;border:none;color:var(--gold);font-size:12px;mar
 
 <header class="top">
   <div class="brand-row">
-    <div class="brand">Grand Livre <span id="saveStatus" class="save-status"></span></div>
+    <div class="brand"><span class="brand-hero"><span class="z">Z</span>Patrimoine</span> <span id="saveStatus" class="save-status"></span></div>
     <span class="header-actions">
       <span id="dossierLabel" class="save-status" style="margin-right:6px"></span>
       <span id="driveStatus" class="save-status" style="margin-right:6px"></span>
-      <button type="button" id="driveConnectBtn" class="btn secondary">Connecter Google Drive</button>
-      <button type="button" id="dossierSettingsBtn" class="btn secondary">Sécurité</button>
-      <button type="button" id="lockAppBtn" class="btn secondary">Verrouiller</button>
-      <button type="button" id="switchDossierBtn" class="btn secondary">Changer de dossier</button>
-      <button type="button" id="exportBtn" class="btn secondary">Exporter</button>
-      <button type="button" id="importBtn" class="btn secondary">Importer</button>
-      <button type="button" id="importCsvBtn" class="btn secondary">Importer CSV</button>
+      <button type="button" id="settingsMenuBtn" class="settings-btn" title="Menu"><span class="icon" data-icon="settings"></span> Menu</button>
+      <button type="button" id="driveConnectBtn" style="display:none"></button>
+      <button type="button" id="dossierSettingsBtn" style="display:none"></button>
+      <button type="button" id="lockAppBtn" style="display:none"></button>
+      <button type="button" id="switchDossierBtn" style="display:none"></button>
+      <button type="button" id="exportBtn" style="display:none"></button>
+      <button type="button" id="importBtn" style="display:none"></button>
+      <button type="button" id="importCsvBtn" style="display:none"></button>
       <input type="file" id="importFile" accept="application/json" style="display:none">
     </span>
   </div>
@@ -158,6 +169,7 @@ button.btn-edit{background:none;border:none;color:var(--gold);font-size:12px;mar
     <div class="ledger-item net"><div class="label">Patrimoine net</div><div class="value mono" id="hdrNet">—</div></div>
     <div class="ledger-item asset"><div class="label">Actifs</div><div class="value mono" id="hdrAssets">—</div></div>
     <div class="ledger-item debt"><div class="label">Dettes</div><div class="value mono" id="hdrDebts">—</div></div>
+    <div class="ledger-item"><div class="label">Année de référence</div><div class="year-picker" id="yearPickerBox"></div></div>
   </div>
 </header>
 
@@ -193,6 +205,7 @@ let state = null; // défini une fois un dossier ouvert (voir defaultState/openD
 let editing = {}; // holds id being edited per entity
 let loaded = false;
 let lastSupportId = null; // pour préremplir le dernier support utilisé en saisie de mouvement
+let mouvementsFilter = {supportId:'', since:'', until:''};
 let dashboardYear = new Date().getFullYear();
 let dashboardGroupByType = false;
 let dashboardShowDetail = true;
@@ -247,7 +260,7 @@ function defaultState(){
     supports: [], mouvements: [], valorisations: [], emprunts: [], remboursementsAnticipes: [], actions: [],
     types: ['Assurance-vie','PEA','Compte-titres','Livret/épargne','Immobilier','SCPI','PER','FIP','PEE','Crypto','Autre'],
     dispos: ['Liquide','Disponible (fiscalité dégressive)','Bloqué à échéance connue'],
-    projection: { horizonAnnees: 10, hypotheses: {}, versementsRecurrents: [], remboursementsSimules: [] }
+    projection: { horizonAnnees: 10, hypotheses: {}, versementsRecurrents: [], remboursementsSimules: [], scenarios: [] }
   };
 }
 async function loadIndex(){
@@ -533,11 +546,24 @@ const ICONS = {
   sync: svgIcon('<path d="M21 12a9 9 0 01-15 6.7L3 16"/><path d="M3 12a9 9 0 0115-6.7L21 8"/><path d="M21 4v4h-4"/><path d="M3 20v-4h4"/>'),
   unlink: svgIcon('<path d="M9 15l-2 2a4 4 0 01-6-6l2-2"/><path d="M15 9l2-2a4 4 0 016 6l-2 2"/><path d="M4 4l16 16"/>'),
   shield: svgIcon('<path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/>'),
+  settings: svgIcon('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1 1.55V21a2 2 0 01-4 0v-.09a1.7 1.7 0 00-1-1.55 1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.7 1.7 0 00.34-1.87 1.7 1.7 0 00-1.55-1H3a2 2 0 010-4h.09a1.7 1.7 0 001.55-1 1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06a1.7 1.7 0 001.87.34H9a1.7 1.7 0 001-1.55V3a2 2 0 014 0v.09a1.7 1.7 0 001 1.55 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06a1.7 1.7 0 00-.34 1.87V9a1.7 1.7 0 001.55 1H21a2 2 0 010 4h-.09a1.7 1.7 0 00-1.55 1z"/>'),
   lock: svgIcon('<rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/>'),
   folder: svgIcon('<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>'),
   download: svgIcon('<path d="M12 4v10"/><path d="M8 11l4 4 4-4"/><path d="M4 19h16"/>'),
   upload: svgIcon('<path d="M12 20V10"/><path d="M8 13l4-4 4 4"/><path d="M4 5h16"/>'),
 };
+function effectiveDispoDate(s){
+  if(s.dispoMode==='date') return s.dateDisponibilite || null;
+  if(s.dispoMode==='duree' && s.dispoDureeAnnees){
+    const dates = state.mouvements.filter(m=>m.supportId===s.id).map(m=>m.date)
+      .concat(state.valorisations.filter(v=>v.supportId===s.id).map(v=>v.date)).sort();
+    const base = dates[0];
+    if(!base) return null;
+    const d = new Date(base); d.setFullYear(d.getFullYear()+Number(s.dispoDureeAnnees));
+    return d.toISOString().slice(0,10);
+  }
+  return null;
+}
 function isoToFr(iso){ if(!iso) return ''; const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
 // Champ date unifié : saisie au clavier numérique, les "/" s'insèrent tout seuls.
 function dateInputHTML(name, isoValue, required){
@@ -763,6 +789,25 @@ function renderHeader(){
   document.getElementById('hdrAssets').textContent = fmtEUR(a);
   document.getElementById('hdrDebts').textContent = fmtEUR(d);
   document.getElementById('hdrNet').textContent = fmtEUR(a-d);
+  renderYearPicker();
+}
+function renderYearPicker(){
+  const boxes = [document.getElementById('yearPickerBox'), document.getElementById('yearPickerBoxMobile')].filter(Boolean);
+  if(boxes.length===0) return;
+  const years = (typeof availableYears==='function') ? availableYears() : [dashboardYear];
+  if(!years.includes(dashboardYear)) dashboardYear = years[0];
+  const idx = years.indexOf(dashboardYear);
+  const html = `
+    <button type="button" class="year-prev-btn" ${idx>=years.length-1?'disabled':''} aria-label="Année précédente">‹</button>
+    <span class="year-picker-value">${dashboardYear}</span>
+    <button type="button" class="year-next-btn" ${idx<=0?'disabled':''} aria-label="Année suivante">›</button>
+  `;
+  boxes.forEach(box=>{
+    box.innerHTML = html;
+    const prev = box.querySelector('.year-prev-btn'), next = box.querySelector('.year-next-btn');
+    if(prev) prev.onclick = ()=>{ const ys=availableYears(); const i=ys.indexOf(dashboardYear); if(i<ys.length-1){ dashboardYear=ys[i+1]; renderAll(); } };
+    if(next) next.onclick = ()=>{ const ys=availableYears(); const i=ys.indexOf(dashboardYear); if(i>0){ dashboardYear=ys[i-1]; renderAll(); } };
+  });
 }
 
 function tpl(strings, ...vals){ return strings.reduce((acc,s,i)=>acc+s+(vals[i]!==undefined?vals[i]:''),''); }
@@ -816,7 +861,7 @@ function svgLineChart(seriesList, opts){
   const legend = seriesList.map(s=>`<span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);margin-right:16px"><span style="width:16px;height:2.5px;background:${s.color};display:inline-block"></span>${s.label}</span>`).join('');
   const html = `<div>${legend}</div>
     <div style="position:relative;margin-top:6px">
-      <svg id="${uid}" width="100%" height="${height}" viewBox="0 0 ${width} ${height}" style="touch-action:pan-y;cursor:crosshair">
+      <svg id="${uid}" width="100%" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="touch-action:pan-y;cursor:crosshair;display:block">
         ${gridLines}${lines}
         <g id="${uid}-cross" style="display:none">
           <line x1="0" y1="${paddingTop}" x2="0" y2="${height-paddingBottom}" stroke="#C9A65D" stroke-width="1" stroke-dasharray="3,3"/>
@@ -890,16 +935,25 @@ function renderTab(tab){
   if(tab==='offres') main.innerHTML = viewOffres();
   if(tab==='fiscalite') main.innerHTML = viewFiscalite();
   attachHandlers(tab);
+  renderYearPicker();
 }
 
 function openXIRRDetail(supportIds, sinceDate, untilDate, title){
   const {flows, rate} = groupXIRRDetail(supportIds, sinceDate||null, untilDate||null);
   const rows = flows.map(f=>`<tr><td>${fmtDate(f.date)}</td><td class="label-cell">${f.label||''}</td><td class="${f.amount<0?'neg':'pos'}">${fmtEUR(f.amount)}</td></tr>`).join('');
+  const years = availableYears();
+  const yearRows = years.map(y=>{
+    const isCurrent = y===new Date().getFullYear();
+    const r = groupXIRRDetail(supportIds, `${y}-01-01`, isCurrent?null:`${y}-12-31`).rate;
+    return `<tr><td class="label-cell">${y}</td><td class="${r>0?'pos':r<0?'neg':''}">${r===null?'<span class="pill">pas assez de données</span>':fmtPct(r)}</td></tr>`;
+  }).join('');
   document.getElementById('modalContent').innerHTML = `
     <h3>${title}</h3>
     <div class="sub">Flux utilisés pour le calcul du taux annualisé (XIRR)</div>
     ${flows.length? `<table><thead><tr><th>Date</th><th>Origine</th><th>Flux</th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">Pas assez de données pour calculer cette performance.</div>'}
     <div style="margin-top:16px;font-size:24px" class="mono ${rate>0?'pos':rate<0?'neg':''}">${fmtPct(rate)}</div>
+    <div class="sheet-label" style="margin-top:20px">Performance par année</div>
+    <table style="margin-top:6px"><thead><tr><th>Année</th><th>Performance</th></tr></thead><tbody>${yearRows}</tbody></table>
     <button class="btn secondary" type="button" id="closeModalBtn" style="margin-top:16px">Fermer</button>
   `;
   const overlay = document.getElementById('modalOverlay');
@@ -914,8 +968,8 @@ function parseCSV(text){
   const firstLine = text.split(/\r?\n/)[0]||'';
   const delim = (firstLine.split(';').length > firstLine.split(',').length) ? ';' : ',';
   const lines = text.split(/\r?\n/).filter(l=>l.trim().length>0);
-  const rows = lines.map(l=> l.split(delim).map(c=>c.trim().replace(/^"|"$/g,'')));
-  return {delim, headers: rows[0]||[], rows: rows.slice(1)};
+  const allRows = lines.map(l=> l.split(delim).map(c=>c.trim().replace(/^"|"$/g,'')));
+  return {delim, allRows};
 }
 function guessColumn(headers, keywords){
   const idx = headers.findIndex(h=> keywords.some(k=>(h||'').toLowerCase().includes(k)));
@@ -956,14 +1010,30 @@ function openCsvImportModal(){
     reader.readAsText(file, 'UTF-8');
   };
 }
+function currentCsvColumns(){
+  const hasHeaderEl = document.getElementById('csvHasHeader');
+  const hasHeader = hasHeaderEl ? hasHeaderEl.checked : true;
+  const allRows = csvImportData.allRows;
+  if(hasHeader) return {headers: allRows[0]||[], rows: allRows.slice(1)};
+  const ncols = (allRows[0]||[]).length;
+  return {headers: Array.from({length:ncols}, (_,i)=>'Colonne '+(i+1)), rows: allRows};
+}
 function renderCsvMapping(){
-  const {headers, rows} = csvImportData;
-  if(headers.length===0){ document.getElementById('csvMappingArea').innerHTML = '<div class="empty">Fichier vide ou illisible.</div>'; return; }
+  if((csvImportData.allRows||[]).length===0){ document.getElementById('csvMappingArea').innerHTML = '<div class="empty">Fichier vide ou illisible.</div>'; return; }
+  document.getElementById('csvMappingArea').innerHTML = `
+    <div class="sub" style="margin-top:14px">${csvImportData.allRows.length} ligne(s) détectée(s) dans le fichier.</div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;margin-top:10px;text-transform:none;letter-spacing:0"><input type="checkbox" id="csvHasHeader" checked> La première ligne contient les intitulés de colonnes (sinon l'import démarre dès la 1ʳᵉ ligne)</label>
+    <div id="csvColumnsArea"></div>`;
+  document.getElementById('csvHasHeader').onchange = renderCsvColumns;
+  renderCsvColumns();
+}
+function renderCsvColumns(){
+  const {headers, rows} = currentCsvColumns();
   const colOpts = sel=>headers.map((h,i)=>`<option value="${i}" ${i===sel?'selected':''}>${h||'(colonne '+(i+1)+')'}</option>`).join('');
   const guessDate = guessColumn(headers, ['date']);
   const guessMontant = guessColumn(headers, ['montant','amount','valeur','value','solde']);
-  document.getElementById('csvMappingArea').innerHTML = `
-    <div class="sub" style="margin-top:14px">${rows.length} ligne(s) détectée(s). Choisis la destination et fais correspondre les colonnes.</div>
+  document.getElementById('csvColumnsArea').innerHTML = `
+    <div class="sub" style="margin-top:10px">${rows.length} ligne(s) de données. Choisis la destination et fais correspondre les colonnes.</div>
     <form class="inline-form" id="csvMapForm" style="margin-top:10px">
       <div class="field"><label>Destination</label><select name="entity" id="csvEntity"><option value="mouvements">Mouvements</option><option value="valorisations">Valorisations</option></select></div>
       <div class="field"><label>Support cible</label><select name="supportId">${state.supports.map(s=>`<option value="${s.id}">${s.nom}</option>`).join('')}</select></div>
@@ -988,7 +1058,7 @@ function showCsvPreview(){
   const fd = new FormData(form);
   const entity = fd.get('entity'), supportId = fd.get('supportId'), dateFormat = fd.get('dateFormat');
   const colDate = Number(fd.get('colDate')), colMontant = Number(fd.get('colMontant')), colType = fd.get('colType');
-  const { rows } = csvImportData;
+  const { rows } = currentCsvColumns();
   const parsed = []; let skipped = 0;
   rows.forEach(r=>{
     const iso = csvParseDate(r[colDate], dateFormat);
@@ -1041,7 +1111,27 @@ function showGate(){
   if(appLock.hasPassword && !masterKey) renderAppUnlock();
   else renderGate();
 }
+function migrateProjectionScenarios(){
+  if(!state.projection.scenarios) state.projection.scenarios = [];
+  let needsArbitrage = false;
+  (state.projection.versementsRecurrents||[]).forEach(v=>{
+    if(v.scenarioId===undefined){
+      if(v.scenario==='arbitrage'){ v.scenarioId='legacy-arbitrage'; needsArbitrage=true; } else v.scenarioId=null;
+      delete v.scenario;
+    }
+  });
+  (state.projection.remboursementsSimules||[]).forEach(r=>{
+    if(r.scenarioId===undefined){
+      if(r.scenario==='arbitrage'){ r.scenarioId='legacy-arbitrage'; needsArbitrage=true; } else r.scenarioId=null;
+      delete r.scenario;
+    }
+  });
+  if(needsArbitrage && !state.projection.scenarios.some(s=>s.id==='legacy-arbitrage')){
+    state.projection.scenarios.push({id:'legacy-arbitrage', nom:'Arbitrage', color:'#C9A65D'});
+  }
+}
 function enterApp(){
+  migrateProjectionScenarios();
   document.getElementById('gateScreen').style.display = 'none';
   document.querySelector('header.top').style.display = 'block';
   document.querySelector('nav.tabs').style.display = 'flex';
@@ -1060,7 +1150,7 @@ function enterApp(){
 function renderAppUnlock(){
   document.getElementById('gateScreen').innerHTML = `
     <div style="max-width:420px;margin:100px auto;padding:0 20px">
-      <div class="brand" style="margin-bottom:8px;font-size:22px">Grand Livre</div>
+      <div class="brand-hero"><span class="z">Z</span>Patrimoine</div>
       <div class="sub" style="margin-bottom:20px">Application protégée par mot de passe.</div>
       <form id="appUnlockForm" class="inline-form">
         <div class="field" style="flex:1 1 100%"><label>Mot de passe</label><input type="password" id="appUnlockPassword" name="password" autocomplete="current-password" required autofocus></div>
@@ -1092,7 +1182,7 @@ function renderGate(){
     </div>`).join('');
   document.getElementById('gateScreen').innerHTML = `
     <div style="max-width:540px;margin:60px auto;padding:0 20px">
-      <div class="brand" style="margin-bottom:8px;font-size:22px">Grand Livre ${appLock.hasPassword?'🔒':''}</div>
+      <div class="brand-hero"><span class="z">Z</span>Patrimoine ${appLock.hasPassword?'🔒':''}</div>
       <div class="sub" style="margin-bottom:16px">Un dossier par personne ou par portefeuille suivi. Un seul mot de passe protège l'ensemble de tes dossiers (réglable ci-dessous).</div>
       <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
         <div><h3 style="margin-bottom:2px">Sécurité</h3><div class="sub" style="margin:0">${appLock.hasPassword? 'Tous les dossiers sont protégés par un mot de passe unique.' : "Aucun mot de passe défini."}</div></div>
@@ -1273,7 +1363,6 @@ function viewDashboard(){
   const sinceDate = `${dashboardYear}-01-01`;
   const isCurrentYear = dashboardYear===new Date().getFullYear();
   const untilDate = isCurrentYear ? null : `${dashboardYear}-12-31`;
-  const yearSelect = `<select id="dashboardYearSel">${years.map(y=>`<option value="${y}" ${y===dashboardYear?'selected':''}>${y}</option>`).join('')}</select>`;
   const allIds = state.supports.map(s=>s.id);
   const portAnnuel = groupXIRRDetail(allIds, sinceDate, untilDate);
   const portGlobal = groupXIRRDetail(allIds, null, null);
@@ -1295,7 +1384,7 @@ function viewDashboard(){
     return `<tr>
       <td class="label-cell">${s.nom}</td>
       <td class="label-cell"><span class="pill">${s.type}</span></td>
-      <td class="label-cell">${s.disponibilite}${s.dateDisponibilite?` <span class="pill">dispo. ${fmtDate(s.dateDisponibilite)}</span>`:''}</td>
+      <td class="label-cell">${s.disponibilite}${effectiveDispoDate(s)?` <span class="pill">dispo. ${fmtDate(effectiveDispoDate(s))}</span>`:''}</td>
       <td>${val?fmtEUR(val.value):'—'}${val&&val.estimated?' <span class="pill">estimé</span>':''}${val&&val.fromActions?' <span class="pill">via actions</span>':''}</td>
       <td class="${perfClass}">${perfCell}</td>
       <td class="${xGlobal>0?'pos':xGlobal<0?'neg':''}">${xGlobal===null?'<span class="pill">pas assez de données</span>':`<button class="perf-link" data-ids="${s.id}" data-since="" data-until="" data-title="Performance globale">${fmtPct(xGlobal)}</button>`}</td>
@@ -1320,7 +1409,7 @@ function viewDashboard(){
       <div class="sc-top">
         <div>
           <div class="sc-name">${s.nom}</div>
-          <div class="sc-tags"><span class="pill">${s.type}</span><span class="pill">${s.disponibilite}</span>${s.dateDisponibilite?`<span class="pill">dispo. ${fmtDate(s.dateDisponibilite)}</span>`:''}</div>
+          <div class="sc-tags"><span class="pill">${s.type}</span><span class="pill">${s.disponibilite}</span>${effectiveDispoDate(s)?`<span class="pill">dispo. ${fmtDate(effectiveDispoDate(s))}</span>`:''}</div>
         </div>
         <div class="sc-value">${val?fmtEUR(val.value):'—'}${val&&val.estimated?'<span class="pill">estimé</span>':''}${val&&val.fromActions?'<span class="pill">actions</span>':''}</div>
       </div>
@@ -1400,9 +1489,10 @@ function viewDashboard(){
   <div class="card mobile-summary">
     <div class="label" style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim)">Patrimoine net</div>
     <div class="mono" style="font-size:30px;color:var(--gold);margin:2px 0 10px">${fmtEUR(assetsNow-debtsNow)}</div>
-    <div style="display:flex;gap:22px">
+    <div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap">
       <div><div class="label" style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim)">Actifs</div><div class="mono pos" style="font-size:15px">${fmtEUR(assetsNow)}</div></div>
       <div><div class="label" style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim)">Dettes</div><div class="mono neg" style="font-size:15px">${fmtEUR(debtsNow)}</div></div>
+      <div><div class="label" style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim)">Année</div><div class="year-picker" id="yearPickerBoxMobile"></div></div>
     </div>
   </div>
   <div class="card">
@@ -1424,9 +1514,8 @@ function viewDashboard(){
   </div>
   <div class="card">
     <h3>Comparatif des supports</h3>
-    <div class="sub">Performance de l'année sélectionnée vs performance globale, méthode XIRR</div>
+    <div class="sub">Performance de l'année sélectionnée (${dashboardYear}, modifiable en haut de page) vs performance globale, méthode XIRR</div>
     <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:end;margin-bottom:14px">
-      <div class="field" style="max-width:140px"><label>Année civile</label>${yearSelect}</div>
       <div class="field"><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);text-transform:none;letter-spacing:0"><input type="checkbox" id="groupByTypeChk" ${dashboardGroupByType?'checked':''}> Regrouper par type</label></div>
       ${dashboardGroupByType? `<div class="field"><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);text-transform:none;letter-spacing:0"><input type="checkbox" id="groupDetailChk" ${dashboardShowDetail?'checked':''}> Avec détail</label></div>`:''}
     </div>
@@ -1439,11 +1528,15 @@ function viewDashboard(){
 
 // ---- SUPPORTS ----
 function viewSupports(){
-  const rows = state.supports.map(s=>`<tr>
+  const rows = state.supports.map((s,i)=>`<tr>
     <td class="label-cell">${s.nom}</td><td class="label-cell">${s.type}</td><td class="label-cell">${s.disponibilite}</td>
-    <td>${s.dateDisponibilite? fmtDate(s.dateDisponibilite) : '—'}</td>
+    <td>${effectiveDispoDate(s)? fmtDate(effectiveDispoDate(s)) : (s.dispoMode==='immediat'||!s.dispoMode?'Immédiat':'—')}</td>
     <td>${s.delaiJouissance||0} mois</td>
-    <td><button class="btn-edit" data-edit-support="${s.id}">Modifier</button><button class="btn-del" data-del-support="${s.id}">Suppr.</button></td>
+    <td style="white-space:nowrap">
+      <button class="btn-edit" data-move-support-up="${s.id}" ${i===0?'disabled':''} title="Monter">▲</button>
+      <button class="btn-edit" data-move-support-down="${s.id}" ${i===state.supports.length-1?'disabled':''} title="Descendre">▼</button>
+      <button class="btn-edit" data-edit-support="${s.id}">Modifier</button><button class="btn-del" data-del-support="${s.id}">Suppr.</button>
+    </td>
   </tr>`).join('');
   const e = editing.support ? state.supports.find(s=>s.id===editing.support) : null;
   const typeRows = state.types.map((t,i)=>`<tr>
@@ -1452,7 +1545,11 @@ function viewSupports(){
   </tr>`).join('');
   const dispoRows = state.dispos.map((t,i)=>`<tr>
     <td><input class="dispo-rename" data-dispo-idx="${i}" value="${t}"></td>
-    <td><button class="btn-del" data-del-dispo="${t}">Supprimer</button></td>
+    <td style="white-space:nowrap">
+      <button class="btn-edit" data-move-dispo-up="${i}" ${i===0?'disabled':''} title="Monter">▲</button>
+      <button class="btn-edit" data-move-dispo-down="${i}" ${i===state.dispos.length-1?'disabled':''} title="Descendre">▼</button>
+      <button class="btn-del" data-del-dispo="${t}">Supprimer</button>
+    </td>
   </tr>`).join('');
   const supOptsForTaux = ()=>state.supports.map(sp=>`<option value="${sp.id}">${sp.nom}</option>`).join('');
   const tauxRows = [];
@@ -1469,7 +1566,13 @@ function viewSupports(){
       <div class="field"><label>Nom</label><input name="nom" required value="${e?e.nom:''}"></div>
       <div class="field"><label>Type</label><select name="type">${state.types.map(t=>`<option ${e&&e.type===t?'selected':''}>${t}</option>`).join('')}</select></div>
       <div class="field"><label>Disponibilité</label><select name="disponibilite">${state.dispos.map(t=>`<option ${e&&e.disponibilite===t?'selected':''}>${t}</option>`).join('')}</select></div>
-      <div class="field"><label>Date de disponibilité (si différée, ex. PER, PEE)</label>${dateInputHTML('dateDisponibilite', e&&e.dateDisponibilite?e.dateDisponibilite:null, false)}</div>
+      <div class="field"><label>Accès aux fonds</label><select name="dispoMode" id="dispoModeSel">
+        <option value="immediat" ${!e||!e.dispoMode||e.dispoMode==='immediat'?'selected':''}>Immédiat</option>
+        <option value="date" ${e&&e.dispoMode==='date'?'selected':''}>Date exacte</option>
+        <option value="duree" ${e&&e.dispoMode==='duree'?'selected':''}>Nombre d'années avant dispo.</option>
+      </select></div>
+      <div class="field" id="dispoDateField" style="${e&&e.dispoMode==='date'?'':'display:none'}"><label>Date de disponibilité</label>${dateInputHTML('dateDisponibilite', e&&e.dateDisponibilite?e.dateDisponibilite:null, false)}</div>
+      <div class="field" id="dispoDureeField" style="${e&&e.dispoMode==='duree'?'':'display:none'}"><label>Années avant disponibilité</label><input name="dispoDureeAnnees" type="number" inputmode="numeric" min="0" step="1" value="${e&&e.dispoDureeAnnees?e.dispoDureeAnnees:''}"></div>
       <div class="field"><label>Délai jouissance (mois, SCPI)</label><input name="delaiJouissance" type="number" inputmode="numeric" min="0" value="${e?(e.delaiJouissance||0):0}"></div>
       <button class="btn" type="submit">${e?'Enregistrer':'Ajouter'}</button>
       ${e?'<button class="btn secondary" type="button" id="cancelEditSupport">Annuler</button>':''}
@@ -1515,7 +1618,13 @@ function viewSupports(){
 function viewMouvements(){
   const supOpts = sel=>state.supports.map(sp=>`<option value="${sp.id}" ${sel===sp.id?'selected':''}>${sp.nom}</option>`).join('');
   const typeLabel = t=> t==='versement'?'Versement':t==='retrait'?'Retrait':'Intérêts perçus';
-  const rows = state.mouvements.slice().sort((a,b)=>a.date<b.date?1:-1).map(m=>{
+  const filtered = state.mouvements.filter(m=>{
+    if(mouvementsFilter.supportId && m.supportId!==mouvementsFilter.supportId) return false;
+    if(mouvementsFilter.since && m.date<mouvementsFilter.since) return false;
+    if(mouvementsFilter.until && m.date>mouvementsFilter.until) return false;
+    return true;
+  });
+  const rows = filtered.slice().sort((a,b)=>a.date<b.date?1:-1).map(m=>{
     const sup = state.supports.find(s=>s.id===m.supportId);
     return `<tr>
       <td>${fmtDate(m.date)}</td><td class="label-cell">${sup?sup.nom:'?'}</td>
@@ -1550,7 +1659,14 @@ function viewMouvements(){
     </form>
   </div>
   <div class="card"><h3>Historique des mouvements</h3>
-    ${state.mouvements.length? `<table><thead><tr><th>Date</th><th>Support</th><th>Type</th><th>Montant</th><th>Frais</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">Aucun mouvement.</div>'}
+    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:end;margin-bottom:14px">
+      <div class="field"><label>Filtrer par support</label><select id="mvtFilterSupport"><option value="">Tous les supports</option>${state.supports.map(s=>`<option value="${s.id}" ${mouvementsFilter.supportId===s.id?'selected':''}>${s.nom}</option>`).join('')}</select></div>
+      <div class="field"><label>Depuis</label><input type="text" inputmode="numeric" class="date-mask" id="mvtFilterSince" placeholder="JJ/MM/AAAA" maxlength="10" value="${mouvementsFilter.since?isoToFr(mouvementsFilter.since):''}"></div>
+      <div class="field"><label>Jusqu'au</label><input type="text" inputmode="numeric" class="date-mask" id="mvtFilterUntil" placeholder="JJ/MM/AAAA" maxlength="10" value="${mouvementsFilter.until?isoToFr(mouvementsFilter.until):''}"></div>
+      <button class="btn secondary" type="button" id="mvtFilterReset">Réinitialiser</button>
+    </div>
+    ${filtered.length!==state.mouvements.length? `<div class="sub" style="margin-bottom:10px">${filtered.length} mouvement(s) affiché(s) sur ${state.mouvements.length}</div>`:''}
+    ${filtered.length? `<table><thead><tr><th>Date</th><th>Support</th><th>Type</th><th>Montant</th><th>Frais</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : `<div class="empty">${state.mouvements.length?'Aucun mouvement ne correspond à ce filtre.':'Aucun mouvement.'}</div>`}
   </div>`;
 }
 
@@ -1705,25 +1821,44 @@ function viewEmprunts(){
 // ---- PROJECTIONS ----
 function viewProjections(){
   if(state.supports.length===0 && state.emprunts.length===0) return `<div class="card"><div class="empty">Ajoute des supports et/ou emprunts pour lancer une projection.</div></div>`;
+  if(!state.projection.scenarios) state.projection.scenarios = [];
   const hypRows = state.supports.map(s=>`<tr>
     <td class="label-cell">${s.nom}</td>
     <td><input data-hyp="${s.id}" type="number" inputmode="decimal" step="0.1" style="width:80px" value="${state.projection.hypotheses[s.id]!==undefined?state.projection.hypotheses[s.id]:3}"> %/an</td>
   </tr>`).join('');
   const supOpts = ()=>state.supports.map(sp=>`<option value="${sp.id}">${sp.nom}</option>`).join('');
   const empOpts = ()=>state.emprunts.map(e=>`<option value="${e.id}">${e.nom}</option>`).join('');
+  const scenarioOpts = ()=>'<option value="">Commun (tous les scénarios)</option>'+state.projection.scenarios.map(sc=>`<option value="${sc.id}">${sc.nom}</option>`).join('');
+  const scenarioLabel = id=> id ? (state.projection.scenarios.find(sc=>sc.id===id)||{nom:'?'}).nom : 'Commun';
+  const scenarioRows = state.projection.scenarios.map(sc=>`<tr>
+    <td><input class="scenario-rename" data-scenario-id="${sc.id}" value="${sc.nom}"></td>
+    <td><input type="color" class="scenario-color" data-scenario-id="${sc.id}" value="${sc.color}" style="width:44px;height:28px;padding:2px;background:none;border:1px solid var(--line);border-radius:4px"></td>
+    <td><button class="btn-del" data-del-scenario="${sc.id}">Supprimer</button></td>
+  </tr>`).join('');
   const vrRows = state.projection.versementsRecurrents.map(v=>{
     const sup = state.supports.find(s=>s.id===v.supportId);
     return `<tr><td class="label-cell">${sup?sup.nom:'?'}</td><td>${fmtEUR(v.montant)}/mois</td><td>${v.dateFin?fmtDate(v.dateFin):'—'}</td>
-    <td><span class="scenario-tag ${v.scenario==='arbitrage'?'scenario-arb':'scenario-both'}">${v.scenario==='arbitrage'?'Scénario arbitrage':'Toujours'}</span></td>
+    <td><span class="scenario-tag ${v.scenarioId?'scenario-arb':'scenario-both'}">${scenarioLabel(v.scenarioId)}</span></td>
     <td><button class="btn-del" data-del-vr="${v.id}">Suppr.</button></td></tr>`;
   }).join('');
   const rsRows = state.projection.remboursementsSimules.map(r=>{
     const emp = state.emprunts.find(e=>e.id===r.empruntId);
+    const src = r.sourceSupportId ? state.supports.find(s=>s.id===r.sourceSupportId) : null;
     return `<tr><td class="label-cell">${emp?emp.nom:'?'}</td><td>${fmtDate(r.date)}</td><td>${fmtEUR(r.montant)}</td>
-    <td><span class="scenario-tag ${r.scenario==='arbitrage'?'scenario-arb':'scenario-both'}">${r.scenario==='arbitrage'?'Scénario arbitrage':'Toujours'}</span></td>
+    <td class="label-cell">${src?src.nom:'—'}</td>
+    <td><span class="scenario-tag ${r.scenarioId?'scenario-arb':'scenario-both'}">${scenarioLabel(r.scenarioId)}</span></td>
     <td><button class="btn-del" data-del-rs="${r.id}">Suppr.</button></td></tr>`;
   }).join('');
   return `
+  <div class="card">
+    <h3>Scénarios</h3>
+    <div class="sub">Crée plusieurs scénarios nommés pour comparer des stratégies différentes sur le même graphique. Un événement "Commun" s'applique à tous les scénarios (et au scénario de base).</div>
+    ${state.projection.scenarios.length? `<table><thead><tr><th>Nom</th><th>Couleur</th><th></th></tr></thead><tbody>${scenarioRows}</tbody></table>`:'<div class="empty">Aucun scénario créé pour le moment — le graphique montre uniquement le socle commun.</div>'}
+    <form class="inline-form" id="formScenario" style="margin-top:12px">
+      <div class="field"><label>Nouveau scénario</label><input name="nom" required></div>
+      <button class="btn" type="submit">Ajouter</button>
+    </form>
+  </div>
   <div class="card">
     <h3>Hypothèses de rendement</h3>
     <div class="sub">Rendement annuel moyen supposé par support</div>
@@ -1732,38 +1867,39 @@ function viewProjections(){
   </div>
   <div class="card">
     <h3>Versements récurrents</h3>
-    <div class="sub">Coche "scénario arbitrage" pour tester l'impact d'un versement récurrent optionnel</div>
+    <div class="sub">Rattache un versement récurrent au socle commun ou à un scénario précis</div>
     ${state.supports.length? `
     <form class="inline-form" id="formVR">
       <div class="field"><label>Support</label><select name="supportId">${supOpts()}</select></div>
       <div class="field"><label>Montant mensuel (€)</label><input name="montant" type="number" inputmode="numeric" step="1" required></div>
       <div class="field"><label>Fin (optionnel)</label>${dateInputHTML('dateFin', null, false)}</div>
-      <div class="field"><label>Scénario</label><select name="scenario"><option value="both">Toujours actif</option><option value="arbitrage">Arbitrage seulement</option></select></div>
+      <div class="field"><label>Scénario</label><select name="scenarioId">${scenarioOpts()}</select></div>
       <button class="btn" type="submit">Ajouter</button>
     </form>`:''}
     ${state.projection.versementsRecurrents.length? `<table><thead><tr><th>Support</th><th>Montant</th><th>Fin</th><th>Scénario</th><th></th></tr></thead><tbody>${vrRows}</tbody></table>`:'<div class="empty">Aucun versement récurrent.</div>'}
   </div>
   <div class="card">
     <h3>Remboursements anticipés simulés</h3>
-    <div class="sub">Teste l'effet d'un remboursement anticipé futur sur le patrimoine net</div>
+    <div class="sub">Teste l'effet d'un remboursement anticipé futur — optionnellement financé par un retrait sur un placement à cette même date, pour un scénario cohérent de bout en bout</div>
     ${state.emprunts.length? `
     <form class="inline-form" id="formRS">
       <div class="field"><label>Emprunt</label><select name="empruntId">${empOpts()}</select></div>
       <div class="field"><label>Date</label>${dateInputHTML('date', null, true)}</div>
       <div class="field"><label>Montant (€)</label><input name="montant" type="number" inputmode="numeric" step="1" required></div>
-      <div class="field"><label>Scénario</label><select name="scenario"><option value="arbitrage">Arbitrage seulement</option><option value="both">Toujours actif</option></select></div>
+      <div class="field"><label>Financé par (optionnel)</label><select name="sourceSupportId"><option value="">— Argent externe —</option>${supOpts()}</select></div>
+      <div class="field"><label>Scénario</label><select name="scenarioId">${scenarioOpts()}</select></div>
       <button class="btn" type="submit">Ajouter</button>
     </form>`: '<div class="empty">Aucun emprunt enregistré.</div>'}
-    ${state.projection.remboursementsSimules.length? `<table><thead><tr><th>Emprunt</th><th>Date</th><th>Montant</th><th>Scénario</th><th></th></tr></thead><tbody>${rsRows}</tbody></table>`:''}
+    ${state.projection.remboursementsSimules.length? `<table><thead><tr><th>Emprunt</th><th>Date</th><th>Montant</th><th>Financé par</th><th>Scénario</th><th></th></tr></thead><tbody>${rsRows}</tbody></table>`:''}
   </div>
   <div class="card">
     <h3>Patrimoine net projeté</h3>
-    <div class="sub">Scénario de base (traits pleins) vs scénario avec arbitrage (pointillés)</div>
+    <div class="sub">Scénario de base (trait plein) vs chaque scénario défini (pointillés, une couleur par scénario)</div>
     ${renderProjectionChart()}
   </div>`;
 }
 
-function projectPatrimoine(includeArbitrage){
+function projectPatrimoine(scenarioId){
   const months = state.projection.horizonAnnees*12;
   const today = new Date();
   // support values
@@ -1782,7 +1918,7 @@ function projectPatrimoine(includeArbitrage){
       state.supports.forEach(s=>{
         const rate = (state.projection.hypotheses[s.id]!==undefined?state.projection.hypotheses[s.id]:3)/100/12;
         supVals[s.id] = supVals[s.id]*(1+rate);
-        state.projection.versementsRecurrents.filter(v=>v.supportId===s.id && (v.scenario==='both' || includeArbitrage) && (!v.dateFin || v.dateFin>=iso)).forEach(v=>{
+        state.projection.versementsRecurrents.filter(v=>v.supportId===s.id && (v.scenarioId===null || (scenarioId!==null && v.scenarioId===scenarioId)) && (!v.dateFin || v.dateFin>=iso)).forEach(v=>{
           supVals[s.id]+=v.montant;
         });
       });
@@ -1794,10 +1930,13 @@ function projectPatrimoine(includeArbitrage){
         const mensualite = e.type==='constant' ? (rate===0? e.capital/n : e.capital*rate/(1-Math.pow(1+rate,-n))) : e.capital*rate;
         const interet = loanCap[e.id]*rate;
         let principal = e.type==='constant' ? (mensualite-interet) : 0;
-        const prepay = state.projection.remboursementsSimules.filter(r=>r.empruntId===e.id && r.date.slice(0,7)===iso.slice(0,7) && (r.scenario==='both' || includeArbitrage)).reduce((s,r)=>s+r.montant,0);
+        const applicable = state.projection.remboursementsSimules.filter(r=>r.empruntId===e.id && r.date.slice(0,7)===iso.slice(0,7) && (r.scenarioId===null || (scenarioId!==null && r.scenarioId===scenarioId)));
+        const prepay = applicable.reduce((s,r)=>s+r.montant,0);
         loanCap[e.id] = Math.max(0, loanCap[e.id]-principal-prepay);
         totalInterets += interet;
         totalAssurance += loanInsuranceMonthly(e);
+        // le remboursement anticipé simulé peut être financé par un retrait sur un placement, à la même date
+        applicable.forEach(r=>{ if(r.sourceSupportId && supVals[r.sourceSupportId]!==undefined) supVals[r.sourceSupportId] = Math.max(0, supVals[r.sourceSupportId]-r.montant); });
       });
     }
     const assets = Object.values(supVals).reduce((a,b)=>a+b,0);
@@ -1809,13 +1948,16 @@ function projectPatrimoine(includeArbitrage){
 let projectionChartActivate = null;
 function renderProjectionChart(){
   if(state.supports.length===0 && state.emprunts.length===0) return '<div class="empty">Ajoute des supports ou des emprunts pour voir la projection.</div>';
-  const base = projectPatrimoine(false);
-  const arb = projectPatrimoine(true);
-  const hasArb = state.projection.versementsRecurrents.some(v=>v.scenario==='arbitrage') || state.projection.remboursementsSimules.some(r=>r.scenario==='arbitrage');
   const sample = pts => pts.filter((_,i)=>i%3===0).map(p=>({y:Math.round(p.net), label:p.date.slice(0,7)}));
+  const base = projectPatrimoine(null);
   const series = [{label:'Scénario de base', color:'#4F9C82', points: sample(base.points)}];
-  if(hasArb) series.push({label:'Avec arbitrage', color:'#C9A65D', dash:'6,4', points: sample(arb.points)});
-  const costNote = state.emprunts.length? `<div class="sub" style="margin-top:12px">Sur l'horizon (scénario de base) : ${fmtEUR(base.totalInterets)} d'intérêts et ${fmtEUR(base.totalAssurance)} d'assurance emprunt${hasArb?` · scénario avec arbitrage : ${fmtEUR(arb.totalInterets)} d'intérêts et ${fmtEUR(arb.totalAssurance)} d'assurance`:''}</div>` : '';
+  const costLines = [`Sur l'horizon — Base : ${fmtEUR(base.totalInterets)} d'intérêts et ${fmtEUR(base.totalAssurance)} d'assurance emprunt`];
+  (state.projection.scenarios||[]).forEach(sc=>{
+    const proj = projectPatrimoine(sc.id);
+    series.push({label: sc.nom, color: sc.color, dash:'6,4', points: sample(proj.points)});
+    if(state.emprunts.length) costLines.push(`${sc.nom} : ${fmtEUR(proj.totalInterets)} d'intérêts et ${fmtEUR(proj.totalAssurance)} d'assurance`);
+  });
+  const costNote = state.emprunts.length? `<div class="sub" style="margin-top:12px">${costLines.join(' · ')}</div>` : '';
   const chart = svgLineChart(series);
   projectionChartActivate = chart.activate;
   return chart.html + costNote;
@@ -1824,12 +1966,16 @@ function renderProjectionChart(){
 // ---- FISCALITÉ ----
 // Estimation simplifiée : taux forfaitaire appliqué à la plus-value latente. Ne tient PAS compte de l'ancienneté du
 // contrat, des abattements annuels, des seuils, ni de la situation personnelle — à affiner avec un professionnel.
-const DEFAULT_TAX_RATES = {'Assurance-vie':24.7,'PEA':17.2,'Compte-titres':30,'Livret/épargne':0,'PER':30,'FIP':17.2,'PEE':17.2,'SCPI':36.2,'Immobilier':36.2,'Crypto':30,'Autre':30};
+const DEFAULT_IR_RATES = {'Assurance-vie':7.5,'PEA':0,'Compte-titres':12.8,'Livret/épargne':0,'PER':30,'FIP':0,'PEE':0,'SCPI':19,'Immobilier':19,'Crypto':12.8,'Autre':12.8};
+const DEFAULT_PS_RATES = {'Assurance-vie':17.2,'PEA':17.2,'Compte-titres':17.2,'Livret/épargne':0,'PER':0,'FIP':17.2,'PEE':17.2,'SCPI':17.2,'Immobilier':17.2,'Crypto':17.2,'Autre':17.2};
 function netInvested(supportId){
   return state.mouvements.filter(m=>m.supportId===supportId).reduce((s,m)=> s + (m.type==='versement'?m.montant : m.type==='retrait'?-m.montant:0), 0);
 }
-function fiscalRateFor(s){
-  return (s.tauxFiscal!==undefined && s.tauxFiscal!==null) ? s.tauxFiscal : (DEFAULT_TAX_RATES[s.type]!==undefined ? DEFAULT_TAX_RATES[s.type] : 30);
+function irRateFor(s){
+  return (s.tauxFiscal!==undefined && s.tauxFiscal!==null) ? s.tauxFiscal : (DEFAULT_IR_RATES[s.type]!==undefined ? DEFAULT_IR_RATES[s.type] : 12.8);
+}
+function psRateFor(s){
+  return (s.tauxPS!==undefined && s.tauxPS!==null) ? s.tauxPS : (DEFAULT_PS_RATES[s.type]!==undefined ? DEFAULT_PS_RATES[s.type] : 17.2);
 }
 function viewFiscalite(){
   if(state.supports.length===0) return `<div class="card"><div class="empty">Ajoute d'abord des supports pour estimer la fiscalité.</div></div>`;
@@ -1839,8 +1985,8 @@ function viewFiscalite(){
     const brut = val ? val.value : 0;
     const invested = netInvested(s.id);
     const plusValue = brut - invested;
-    const rate = fiscalRateFor(s);
-    const impot = plusValue>0 ? plusValue*rate/100 : 0;
+    const irRate = irRateFor(s), psRate = psRateFor(s);
+    const impot = plusValue>0 ? plusValue*(irRate+psRate)/100 : 0;
     const net = brut - impot;
     totalPV += plusValue; totalImpot += impot; totalNet += net; totalBrut += brut;
     return `<tr>
@@ -1848,7 +1994,8 @@ function viewFiscalite(){
       <td class="label-cell"><span class="pill">${s.type}</span></td>
       <td>${fmtEUR(brut)}</td>
       <td class="${plusValue>=0?'pos':'neg'}">${fmtEUR(plusValue)}</td>
-      <td><input class="fiscal-rate" data-support="${s.id}" type="number" inputmode="decimal" step="0.1" style="width:70px" value="${rate}"> %</td>
+      <td><input class="fiscal-rate-ir" data-support="${s.id}" type="number" inputmode="decimal" step="0.1" style="width:64px" value="${irRate}"> %</td>
+      <td><input class="fiscal-rate-ps" data-support="${s.id}" type="number" inputmode="decimal" step="0.1" style="width:64px" value="${psRate}"> %</td>
       <td class="neg">${fmtEUR(impot)}</td>
       <td class="mono">${fmtEUR(net)}</td>
     </tr>`;
@@ -1856,14 +2003,14 @@ function viewFiscalite(){
   return `
   <div class="card">
     <h3>Simulation de fiscalité (estimation)</h3>
-    <div class="helptext">Calcul simplifié : taux forfaitaire appliqué à la plus-value latente (valeur actuelle − net versé). Un taux par défaut est proposé selon le type de support, modifiable ligne par ligne. <strong>Ce n'est ni un calcul officiel ni un conseil fiscal</strong> — il ignore l'ancienneté du contrat, les abattements annuels, les seuils et ta situation personnelle. Vérifie avec un professionnel avant toute décision.</div>
-    <table><thead><tr><th>Support</th><th>Type</th><th>Valeur brute</th><th>Plus-value latente</th><th>Taux appliqué</th><th>Impôt estimé</th><th>Valeur nette d'impôt</th></tr></thead>
+    <div class="helptext">Calcul simplifié : taux forfaitaires appliqués à la plus-value latente (valeur actuelle − net versé) — impôt sur le revenu (IR) et prélèvements sociaux (PS, 17,2 % par défaut). Des taux par défaut sont proposés selon le type de support, modifiables ligne par ligne. <strong>Ce n'est ni un calcul officiel ni un conseil fiscal</strong> — il ignore l'ancienneté du contrat, les abattements annuels, les seuils et ta situation personnelle. Vérifie avec un professionnel avant toute décision.</div>
+    <table><thead><tr><th>Support</th><th>Type</th><th>Valeur brute</th><th>Plus-value latente</th><th>Taux IR</th><th>Taux PS</th><th>Impôt estimé</th><th>Valeur nette d'impôt</th></tr></thead>
     <tbody>${rows}</tbody>
     <tfoot><tr style="font-weight:600;border-top:2px solid var(--line)">
       <td class="label-cell" colspan="2">Total</td>
       <td>${fmtEUR(totalBrut)}</td>
       <td class="${totalPV>=0?'pos':'neg'}">${fmtEUR(totalPV)}</td>
-      <td></td>
+      <td></td><td></td>
       <td class="neg">${fmtEUR(totalImpot)}</td>
       <td class="mono">${fmtEUR(totalNet)}</td>
     </tr></tfoot>
@@ -1913,6 +2060,26 @@ function renderOfferLinks(supportId){
     </a>`).join('');
 }
 
+function settingsGroupHTML(){
+  return `
+    <div class="sheet-label">Données &amp; sécurité</div>
+    <div class="sheet-group">
+      <button type="button" class="more-row" id="menuSync"><span class="icon">${ICONS.sync}</span><span>${googleAccessToken?'Synchroniser maintenant':'Connecter Google Drive'}</span></button>
+      ${googleAccessToken?`<button type="button" class="more-row" id="menuDrive"><span class="icon">${ICONS.unlink}</span><span>Déconnecter Drive</span></button>`:''}
+      <button type="button" class="more-row" id="menuSecurity"><span class="icon">${ICONS.shield}</span><span>Sécurité</span></button>
+      <button type="button" class="more-row" id="menuLock"><span class="icon">${ICONS.lock}</span><span>Verrouiller l'application</span></button>
+      <button type="button" class="more-row" id="menuSwitch"><span class="icon">${ICONS.folder}</span><span>Changer de dossier</span></button>
+      <button type="button" class="more-row" id="menuExport"><span class="icon">${ICONS.download}</span><span>Exporter</span></button>
+      <button type="button" class="more-row" id="menuImport"><span class="icon">${ICONS.upload}</span><span>Importer</span></button>
+      <button type="button" class="more-row" id="menuImportCsv"><span class="icon">${ICONS.upload}</span><span>Importer CSV</span></button>
+    </div>`;
+}
+function wireSettingsGroup(){
+  const sync = document.getElementById('menuSync'); if(sync) sync.onclick = ()=>{ closeModal(); forceSyncNow(); };
+  const relay = (id, targetId)=>{ const el=document.getElementById(id); if(el) el.onclick = ()=>{ closeModal(); document.getElementById(targetId).click(); }; };
+  relay('menuDrive','driveConnectBtn'); relay('menuSecurity','dossierSettingsBtn'); relay('menuLock','lockAppBtn');
+  relay('menuSwitch','switchDossierBtn'); relay('menuExport','exportBtn'); relay('menuImport','importBtn'); relay('menuImportCsv','importCsvBtn');
+}
 function openMoreSheet(){
   const meta = currentDossierMeta();
   showModal(`
@@ -1925,23 +2092,15 @@ function openMoreSheet(){
       <button type="button" class="more-row" data-tab="offres"><span class="icon">${ICONS.offres}</span><span>Offres</span></button>
       <button type="button" class="more-row" data-tab="fiscalite"><span class="icon">${ICONS.fiscalite}</span><span>Fiscalité</span></button>
     </div>
-    <div class="sheet-label">Données &amp; sécurité</div>
-    <div class="sheet-group">
-      <button type="button" class="more-row" id="menuSync"><span class="icon">${ICONS.sync}</span><span>${googleAccessToken?'Synchroniser maintenant':'Connecter Google Drive'}</span></button>
-      ${googleAccessToken?`<button type="button" class="more-row" id="menuDrive"><span class="icon">${ICONS.unlink}</span><span>Déconnecter Drive</span></button>`:''}
-      <button type="button" class="more-row" id="menuSecurity"><span class="icon">${ICONS.shield}</span><span>Sécurité</span></button>
-      <button type="button" class="more-row" id="menuLock"><span class="icon">${ICONS.lock}</span><span>Verrouiller l'application</span></button>
-      <button type="button" class="more-row" id="menuSwitch"><span class="icon">${ICONS.folder}</span><span>Changer de dossier</span></button>
-      <button type="button" class="more-row" id="menuExport"><span class="icon">${ICONS.download}</span><span>Exporter</span></button>
-      <button type="button" class="more-row" id="menuImport"><span class="icon">${ICONS.upload}</span><span>Importer</span></button>
-      <button type="button" class="more-row" id="menuImportCsv"><span class="icon">${ICONS.upload}</span><span>Importer CSV</span></button>
-    </div>
+    ${settingsGroupHTML()}
   `);
   document.querySelectorAll('#modalContent .more-row[data-tab]').forEach(b=>b.onclick=()=>{ switchTab(b.dataset.tab); closeModal(); });
-  const sync = document.getElementById('menuSync'); if(sync) sync.onclick = ()=>{ closeModal(); forceSyncNow(); };
-  const relay = (id, targetId)=>{ const el=document.getElementById(id); if(el) el.onclick = ()=>{ closeModal(); document.getElementById(targetId).click(); }; };
-  relay('menuDrive','driveConnectBtn'); relay('menuSecurity','dossierSettingsBtn'); relay('menuLock','lockAppBtn');
-  relay('menuSwitch','switchDossierBtn'); relay('menuExport','exportBtn'); relay('menuImport','importBtn'); relay('menuImportCsv','importCsvBtn');
+  wireSettingsGroup();
+}
+function openSettingsMenu(){
+  const meta = currentDossierMeta();
+  showModal(`<h3>${meta?meta.nom:'Réglages'}</h3>${settingsGroupHTML()}`);
+  wireSettingsGroup();
 }
 
 // ---------- HANDLERS ----------
@@ -1951,8 +2110,6 @@ function attachHandlers(tab){
 
   if(tab==='dashboard'){
     if(evolutionChartActivate) evolutionChartActivate();
-    const ys = document.getElementById('dashboardYearSel');
-    if(ys) ys.onchange = ()=>{ dashboardYear = Number(ys.value); renderTab('dashboard'); };
     document.querySelectorAll('.perf-link').forEach(b=>b.onclick=()=>{
       openXIRRDetail(b.dataset.ids.split(','), b.dataset.since||null, b.dataset.until||null, b.dataset.title);
     });
@@ -1961,17 +2118,43 @@ function attachHandlers(tab){
   }
 
   if(tab==='supports'){
+    const dm = document.getElementById('dispoModeSel');
+    if(dm) dm.onchange = ()=>{
+      document.getElementById('dispoDateField').style.display = dm.value==='date' ? '' : 'none';
+      document.getElementById('dispoDureeField').style.display = dm.value==='duree' ? '' : 'none';
+    };
     const f = document.getElementById('formSupport');
     f.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(f);
-      const dispoRaw = (fd.get('dateDisponibilite')||'').trim();
-      let dateDisponibilite = null;
-      if(dispoRaw){ dateDisponibilite = frToIso(dispoRaw); if(!dateDisponibilite){ alert('Date de disponibilité invalide : utilise le format JJ/MM/AAAA.'); return; } }
-      const obj = {nom:fd.get('nom'), type:fd.get('type'), disponibilite:fd.get('disponibilite'), dateDisponibilite, delaiJouissance:Number(fd.get('delaiJouissance')||0)};
+      const dispoMode = fd.get('dispoMode')||'immediat';
+      let dateDisponibilite = null, dispoDureeAnnees = null;
+      if(dispoMode==='date'){
+        const dispoRaw = (fd.get('dateDisponibilite')||'').trim();
+        if(dispoRaw){ dateDisponibilite = frToIso(dispoRaw); if(!dateDisponibilite){ alert('Date de disponibilité invalide : utilise le format JJ/MM/AAAA.'); return; } }
+      } else if(dispoMode==='duree'){
+        dispoDureeAnnees = fd.get('dispoDureeAnnees') ? Number(fd.get('dispoDureeAnnees')) : null;
+      }
+      const obj = {nom:fd.get('nom'), type:fd.get('type'), disponibilite:fd.get('disponibilite'), dispoMode, dateDisponibilite, dispoDureeAnnees, delaiJouissance:Number(fd.get('delaiJouissance')||0)};
       if(editing.support){ Object.assign(state.supports.find(s=>s.id===editing.support), obj); editing.support=null; }
       else state.supports.push({id:uid(), tauxAnnonces:{}, ...obj});
       saveState(); renderAll();
     };
     const cancel = document.getElementById('cancelEditSupport'); if(cancel) cancel.onclick=()=>{editing.support=null; renderTab('supports');};
+    document.querySelectorAll('[data-move-support-up]').forEach(b=>b.onclick=()=>{
+      const idx = state.supports.findIndex(s=>s.id===b.dataset.moveSupportUp);
+      if(idx>0){ [state.supports[idx-1],state.supports[idx]]=[state.supports[idx],state.supports[idx-1]]; saveState(); renderTab('supports'); }
+    });
+    document.querySelectorAll('[data-move-support-down]').forEach(b=>b.onclick=()=>{
+      const idx = state.supports.findIndex(s=>s.id===b.dataset.moveSupportDown);
+      if(idx>=0 && idx<state.supports.length-1){ [state.supports[idx+1],state.supports[idx]]=[state.supports[idx],state.supports[idx+1]]; saveState(); renderTab('supports'); }
+    });
+    document.querySelectorAll('[data-move-dispo-up]').forEach(b=>b.onclick=()=>{
+      const idx = Number(b.dataset.moveDispoUp);
+      if(idx>0){ [state.dispos[idx-1],state.dispos[idx]]=[state.dispos[idx],state.dispos[idx-1]]; saveState(); renderTab('supports'); }
+    });
+    document.querySelectorAll('[data-move-dispo-down]').forEach(b=>b.onclick=()=>{
+      const idx = Number(b.dataset.moveDispoDown);
+      if(idx<state.dispos.length-1){ [state.dispos[idx+1],state.dispos[idx]]=[state.dispos[idx],state.dispos[idx+1]]; saveState(); renderTab('supports'); }
+    });
     document.querySelectorAll('[data-edit-support]').forEach(b=>b.onclick=()=>{editing.support=b.dataset.editSupport; renderTab('supports');});
     document.querySelectorAll('[data-del-support]').forEach(b=>b.onclick=()=>{
       const id=b.dataset.delSupport;
@@ -2042,6 +2225,14 @@ function attachHandlers(tab){
   if(tab==='mouvements'){
     const typeSel = document.getElementById('mvtType');
     if(typeSel) typeSel.onchange = ()=>{ const rf=document.getElementById('rattachementField'); if(rf) rf.style.display = typeSel.value==='interet' ? '' : 'none'; };
+    const fSup = document.getElementById('mvtFilterSupport');
+    if(fSup) fSup.onchange = ()=>{ mouvementsFilter.supportId = fSup.value; renderTab('mouvements'); };
+    const fSince = document.getElementById('mvtFilterSince');
+    if(fSince) fSince.addEventListener('change', ()=>{ mouvementsFilter.since = frToIso(fSince.value)||''; renderTab('mouvements'); });
+    const fUntil = document.getElementById('mvtFilterUntil');
+    if(fUntil) fUntil.addEventListener('change', ()=>{ mouvementsFilter.until = frToIso(fUntil.value)||''; renderTab('mouvements'); });
+    const fReset = document.getElementById('mvtFilterReset');
+    if(fReset) fReset.onclick = ()=>{ mouvementsFilter = {supportId:'', since:'', until:''}; renderTab('mouvements'); };
     const f = document.getElementById('formMouvement');
     if(f) f.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(f);
       const iso = frToIso(fd.get('date'));
@@ -2122,12 +2313,30 @@ function attachHandlers(tab){
     if(projectionChartActivate) projectionChartActivate();
     document.querySelectorAll('[data-hyp]').forEach(inp=>inp.onchange=()=>{ state.projection.hypotheses[inp.dataset.hyp]=Number(inp.value); saveState(); renderTab('projections'); });
     const hz = document.getElementById('horizonInput'); if(hz) hz.onchange=()=>{ state.projection.horizonAnnees=Number(hz.value); saveState(); renderTab('projections'); };
+    const fsc = document.getElementById('formScenario');
+    if(fsc) fsc.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(fsc); const nom=(fd.get('nom')||'').trim();
+      if(nom){ const color = CHART_PALETTE[state.projection.scenarios.length % CHART_PALETTE.length]; state.projection.scenarios.push({id:uid(), nom, color}); saveState(); renderTab('projections'); }
+    };
+    document.querySelectorAll('.scenario-rename').forEach(inp=>{
+      inp.onchange = ()=>{ const sc=state.projection.scenarios.find(x=>x.id===inp.dataset.scenarioId); if(sc){ sc.nom=inp.value.trim()||sc.nom; saveState(); renderTab('projections'); } };
+    });
+    document.querySelectorAll('.scenario-color').forEach(inp=>{
+      inp.onchange = ()=>{ const sc=state.projection.scenarios.find(x=>x.id===inp.dataset.scenarioId); if(sc){ sc.color=inp.value; saveState(); renderTab('projections'); } };
+    });
+    document.querySelectorAll('[data-del-scenario]').forEach(b=>b.onclick=()=>{
+      const id = b.dataset.delScenario;
+      if(!confirm('Supprimer ce scénario ? Les événements qui lui sont rattachés repasseront en "Commun".')) return;
+      state.projection.scenarios = state.projection.scenarios.filter(s=>s.id!==id);
+      state.projection.versementsRecurrents.forEach(v=>{ if(v.scenarioId===id) v.scenarioId=null; });
+      state.projection.remboursementsSimules.forEach(r=>{ if(r.scenarioId===id) r.scenarioId=null; });
+      saveState(); renderTab('projections');
+    });
     const fvr = document.getElementById('formVR');
     if(fvr) fvr.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(fvr);
       const rawFin=(fd.get('dateFin')||'').trim();
       let isoFin=null;
       if(rawFin){ isoFin=frToIso(rawFin); if(!isoFin){ alert('Date de fin invalide : utilise le format JJ/MM/AAAA.'); return; } }
-      state.projection.versementsRecurrents.push({id:uid(), supportId:fd.get('supportId'), montant:Number(fd.get('montant')), dateFin:isoFin, scenario:fd.get('scenario')});
+      state.projection.versementsRecurrents.push({id:uid(), supportId:fd.get('supportId'), montant:Number(fd.get('montant')), dateFin:isoFin, scenarioId:fd.get('scenarioId')||null});
       saveState(); renderTab('projections');
     };
     document.querySelectorAll('[data-del-vr]').forEach(b=>b.onclick=()=>{ state.projection.versementsRecurrents=state.projection.versementsRecurrents.filter(v=>v.id!==b.dataset.delVr); saveState(); renderTab('projections'); });
@@ -2135,7 +2344,7 @@ function attachHandlers(tab){
     if(frs) frs.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(frs);
       const isoRS = frToIso(fd.get('date'));
       if(!isoRS){ alert('Date invalide : utilise le format JJ/MM/AAAA.'); return; }
-      state.projection.remboursementsSimules.push({id:uid(), empruntId:fd.get('empruntId'), date:isoRS, montant:Number(fd.get('montant')), scenario:fd.get('scenario')});
+      state.projection.remboursementsSimules.push({id:uid(), empruntId:fd.get('empruntId'), date:isoRS, montant:Number(fd.get('montant')), sourceSupportId:fd.get('sourceSupportId')||null, scenarioId:fd.get('scenarioId')||null});
       saveState(); renderTab('projections');
     };
     document.querySelectorAll('[data-del-rs]').forEach(b=>b.onclick=()=>{ state.projection.remboursementsSimules=state.projection.remboursementsSimules.filter(r=>r.id!==b.dataset.delRs); saveState(); renderTab('projections'); });
@@ -2147,14 +2356,11 @@ function attachHandlers(tab){
   }
 
   if(tab==='fiscalite'){
-    document.querySelectorAll('.fiscal-rate').forEach(inp=>{
-      inp.onchange = ()=>{
-        const s = state.supports.find(x=>x.id===inp.dataset.support);
-        if(!s) return;
-        const v = inp.value.trim();
-        s.tauxFiscal = v==='' ? null : Number(v);
-        saveState(); renderTab('fiscalite');
-      };
+    document.querySelectorAll('.fiscal-rate-ir').forEach(inp=>{
+      inp.onchange = ()=>{ const s=state.supports.find(x=>x.id===inp.dataset.support); if(!s) return; const v=inp.value.trim(); s.tauxFiscal = v===''?null:Number(v); saveState(); renderTab('fiscalite'); };
+    });
+    document.querySelectorAll('.fiscal-rate-ps').forEach(inp=>{
+      inp.onchange = ()=>{ const s=state.supports.find(x=>x.id===inp.dataset.support); if(!s) return; const v=inp.value.trim(); s.tauxPS = v===''?null:Number(v); saveState(); renderTab('fiscalite'); };
     });
   }
 }
@@ -2162,6 +2368,7 @@ function attachHandlers(tab){
 document.getElementById('driveConnectBtn').onclick = ()=>{ googleAccessToken ? disconnectDrive() : connectDrive(); };
 document.querySelectorAll('[data-icon]').forEach(el=>{ if(ICONS[el.dataset.icon]) el.innerHTML = ICONS[el.dataset.icon]; });
 document.getElementById('moreTabBtn').onclick = openMoreSheet;
+document.getElementById('settingsMenuBtn').onclick = openSettingsMenu;
 document.getElementById('switchDossierBtn').onclick = ()=>{ if(confirm('Fermer ce dossier et revenir à la liste des dossiers ?')) lockDossier(); };
 document.getElementById('dossierSettingsBtn').onclick = appSecurityModal;
 document.getElementById('lockAppBtn').onclick = ()=>{ if(confirm('Verrouiller l\'application ? Le mot de passe sera de nouveau demandé.')) lockApp(); };
@@ -2189,6 +2396,9 @@ document.getElementById('importFile').onchange = e=>{
   };
   reader.readAsText(file);
 };
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden' && drivePushPending) drivePushFlush(); });
+window.addEventListener('pagehide', ()=>{ if(drivePushPending) drivePushFlush(); });
+
 (async ()=>{
   await loadIndex();
   // migration : si un ancien fichier mono-dossier existait avant cette mise à jour, on le récupère dans un premier dossier
