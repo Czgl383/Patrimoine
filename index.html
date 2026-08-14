@@ -49,8 +49,25 @@ nav.tabs button.active{color:var(--text);border-bottom-color:var(--gold);}
 .settings-btn:hover{color:var(--text);border-color:var(--gold);}
 .settings-btn .icon{width:15px;height:15px;display:inline-block;}
 .settings-btn .icon svg{width:100%;height:100%;}
-.more-row{display:block;width:100%;text-align:left;background:var(--panel-2);border:1px solid var(--line);color:var(--text);padding:13px 14px;border-radius:6px;font-size:14px;cursor:pointer;font-family:'Inter',sans-serif;}
+.more-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--panel-2);border:1px solid var(--line);color:var(--text);padding:13px 14px;border-radius:6px;font-size:14px;cursor:pointer;font-family:'Inter',sans-serif;}
 .more-row:active{background:var(--ink);}
+.more-row .icon{width:19px;height:19px;flex-shrink:0;color:var(--text-dim);display:inline-block;}
+.more-row .icon svg{width:100%;height:100%;display:block;}
+.sheet-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);margin:16px 0 6px;}
+.sheet-label:first-of-type{margin-top:4px;}
+.sheet-group{display:flex;flex-direction:column;gap:4px;}
+.icon-btn{background:none;border:none;padding:4px;cursor:pointer;color:var(--text-dim);width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border-radius:4px;vertical-align:middle;}
+.icon-btn svg{width:16px;height:16px;display:block;}
+.icon-btn:hover{background:var(--panel-2);color:var(--text);}
+.icon-btn.danger:hover{color:var(--rust);}
+.icon-btn:disabled{opacity:.25;cursor:default;}
+.icon-btn:disabled:hover{background:none;}
+.drag-handle{cursor:grab;color:var(--text-dim);}
+.drag-handle:active{cursor:grabbing;}
+tr.dragging{opacity:.4;}
+.scenario-ctx-bar{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;}
+.scenario-ctx-btn{background:var(--panel-2);border:1px solid var(--line);color:var(--text-dim);border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;}
+.scenario-ctx-btn.active{background:var(--ink);color:var(--gold);border-color:var(--gold);font-weight:600;}
 .mobile-summary{display:none;}
 .dashboard-cards{display:none;}
 .support-card{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:10px;}
@@ -133,12 +150,6 @@ button.btn-edit{background:none;border:none;color:var(--gold);font-size:12px;mar
   .chart-box{min-width:0;}
   #modalOverlay{align-items:flex-end;}
   #modalContent{padding:18px 16px calc(18px + env(safe-area-inset-bottom));width:100%;max-width:100%;border-radius:16px 16px 0 0;max-height:82vh;}
-  .more-row{display:flex;align-items:center;gap:12px;}
-  .more-row .icon{width:19px;height:19px;flex-shrink:0;color:var(--text-dim);}
-  .more-row .icon svg{width:100%;height:100%;}
-  .sheet-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);margin:16px 0 6px;}
-  .sheet-label:first-of-type{margin-top:4px;}
-  .sheet-group{display:flex;flex-direction:column;gap:4px;}
 }
 </style>
 
@@ -532,6 +543,31 @@ const fmtPct = n => (n===null||n===undefined||isNaN(n)) ? '—' : (n*100).toLoca
 const fmtDate = d => new Date(d).toLocaleDateString('fr-FR');
 // Jeu d'icônes en traits fins, cohérent avec la typographie du site (pas d'emojis)
 const svgIcon = (paths, extra) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" ${extra||''}>${paths}</svg>`;
+function editBtn(attr, id){ return `<button type="button" class="icon-btn" data-${attr}="${id}" title="Modifier">${ICONS.edit}</button>`; }
+function delBtn(attr, id){ return `<button type="button" class="icon-btn danger" data-${attr}="${id}" title="Supprimer">${ICONS.trash}</button>`; }
+// Réordonnancement par glisser-déposer : rowSelector cible les <tr data-drag-id="..."> d'un <table>.
+function enableRowDragReorder(table, onReorder){
+  if(!table) return;
+  let dragEl = null;
+  const rows = ()=> Array.from(table.querySelectorAll('tr[data-drag-id]'));
+  rows().forEach(row=>{
+    row.draggable = true;
+    row.addEventListener('dragstart', ()=>{ dragEl=row; setTimeout(()=>row.classList.add('dragging'),0); });
+    row.addEventListener('dragend', ()=>{ row.classList.remove('dragging'); onReorder(rows().map(r=>r.dataset.dragId)); });
+  });
+  table.addEventListener('dragover', e=>{
+    e.preventDefault();
+    if(!dragEl) return;
+    const after = rows().filter(r=>r!==dragEl).reduce((closest, child)=>{
+      const box = child.getBoundingClientRect();
+      const offset = e.clientY - box.top - box.height/2;
+      if(offset<0 && offset>closest.offset) return {offset, element: child};
+      return closest;
+    }, {offset:-Infinity, element:null}).element;
+    const tbody = table.querySelector('tbody') || table;
+    if(after==null) tbody.appendChild(dragEl); else tbody.insertBefore(dragEl, after);
+  });
+}
 const ICONS = {
   dashboard: svgIcon('<path d="M3 12l9-8 9 8"/><path d="M5 10.5V20h14v-9.5"/><path d="M9.5 20v-5.5h5V20"/>'),
   mouvements: svgIcon('<path d="M4 8h13"/><path d="M14 5l3 3-3 3"/><path d="M20 16H7"/><path d="M10 13l-3 3 3 3"/>'),
@@ -547,6 +583,9 @@ const ICONS = {
   unlink: svgIcon('<path d="M9 15l-2 2a4 4 0 01-6-6l2-2"/><path d="M15 9l2-2a4 4 0 016 6l-2 2"/><path d="M4 4l16 16"/>'),
   shield: svgIcon('<path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/>'),
   settings: svgIcon('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1 1.55V21a2 2 0 01-4 0v-.09a1.7 1.7 0 00-1-1.55 1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.7 1.7 0 00.34-1.87 1.7 1.7 0 00-1.55-1H3a2 2 0 010-4h.09a1.7 1.7 0 001.55-1 1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06a1.7 1.7 0 001.87.34H9a1.7 1.7 0 001-1.55V3a2 2 0 014 0v.09a1.7 1.7 0 001 1.55 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06a1.7 1.7 0 00-.34 1.87V9a1.7 1.7 0 001.55 1H21a2 2 0 010 4h-.09a1.7 1.7 0 00-1.55 1z"/>'),
+  edit: svgIcon('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/>'),
+  trash: svgIcon('<path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>'),
+  drag: svgIcon('<circle cx="9" cy="6" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="6" r="1.2" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="18" r="1.2" fill="currentColor" stroke="none"/>'),
   lock: svgIcon('<rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/>'),
   folder: svgIcon('<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>'),
   download: svgIcon('<path d="M12 4v10"/><path d="M8 11l4 4 4-4"/><path d="M4 19h16"/>'),
@@ -744,9 +783,18 @@ function loanSchedule(emprunt){
       const remaining = n-m;
       if(remaining>0) mensualite = rate===0? capital/remaining : capital*rate/(1-Math.pow(1+rate,-remaining));
     }
-    schedule.push({date: iso, capitalRestant: capital, interet, principal: principal+prepaySum});
+    schedule.push({date: iso, capitalRestant: capital, interet, principal: principal+prepaySum, mensualite});
   }
   return schedule;
+}
+// Mensualité réellement en cours aujourd'hui (tient compte des remboursements anticipés passés avec réduction de mensualité) —
+// à ne pas confondre avec loanMensualiteInitiale(e), qui est la mensualité d'origine, fixe, utilisée comme référence.
+function loanCurrentMensualite(emprunt){
+  const sched = loanSchedule(emprunt);
+  const today = new Date().toISOString().slice(0,10);
+  let m = loanMensualiteInitiale(emprunt);
+  for(const s of sched){ if(s.date<=today) m = s.mensualite; else break; }
+  return m;
 }
 function loanRemainingToday(emprunt){
   const sched = loanSchedule(emprunt);
@@ -1102,14 +1150,34 @@ function showModal(html){
 }
 
 // ---------- ÉCRAN DOSSIERS ----------
+let driveGateSkipped = false;
 function showGate(){
   document.getElementById('gateScreen').style.display = 'block';
   document.querySelector('header.top').style.display = 'none';
   document.querySelector('nav.tabs').style.display = 'none';
   document.getElementById('main').style.display = 'none';
   document.getElementById('bottomTabs') && (document.getElementById('bottomTabs').style.display = 'none');
-  if(appLock.hasPassword && !masterKey) renderAppUnlock();
-  else renderGate();
+  if(appLock.hasPassword && !masterKey){ renderAppUnlock(); return; }
+  if(googleAccessToken || driveGateSkipped || !googleConfigured()){ renderGate(); return; }
+  renderGateLoading();
+}
+function renderGateLoading(){
+  document.getElementById('gateScreen').innerHTML = `
+    <div style="max-width:420px;margin:110px auto;padding:0 20px;text-align:center">
+      <div class="brand-hero" style="justify-content:center;display:flex"><span class="z">Z</span>Patrimoine</div>
+      <div class="sub" style="margin-top:18px">Connexion à Google Drive…</div>
+    </div>`;
+}
+function renderGateConnect(){
+  document.getElementById('gateScreen').innerHTML = `
+    <div style="max-width:420px;margin:100px auto;padding:0 20px;text-align:center">
+      <div class="brand-hero" style="justify-content:center;display:flex"><span class="z">Z</span>Patrimoine</div>
+      <div class="sub" style="margin:18px 0 22px">Connecte-toi à Google Drive pour charger tes dossiers, sur cet appareil comme sur les autres.</div>
+      <button class="btn" type="button" id="gateConnectBtn">Connecter Google Drive</button>
+      <div style="margin-top:14px"><button class="btn secondary" type="button" id="gateSkipBtn">Continuer sans Drive (stockage local uniquement)</button></div>
+    </div>`;
+  document.getElementById('gateConnectBtn').onclick = connectDrive;
+  document.getElementById('gateSkipBtn').onclick = ()=>{ driveGateSkipped = true; renderGate(); };
 }
 function migrateProjectionScenarios(){
   if(!state.projection.scenarios) state.projection.scenarios = [];
@@ -1175,9 +1243,9 @@ function renderGate(){
     <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
       <div><h3 style="margin-bottom:2px">${d.legacy?'⚠️ ':''}${d.nom}</h3><div class="sub" style="margin:0">${d.legacy? 'Ancien mot de passe requis (migration à faire une fois)' : 'Créé le '+fmtDate(d.createdAt)}</div></div>
       <div style="display:flex;gap:8px">
-        <button class="btn-edit" type="button" data-rename="${d.id}">Renommer</button>
+        <button type="button" class="icon-btn" data-rename="${d.id}" title="Renommer">${ICONS.edit}</button>
         <button class="btn" type="button" data-open="${d.id}">Ouvrir</button>
-        <button class="btn-del" type="button" data-del-dossier="${d.id}">Suppr.</button>
+        <button type="button" class="icon-btn danger" data-del-dossier="${d.id}" title="Supprimer">${ICONS.trash}</button>
       </div>
     </div>`).join('');
   document.getElementById('gateScreen').innerHTML = `
@@ -1527,40 +1595,9 @@ function viewDashboard(){
 }
 
 // ---- SUPPORTS ----
-function viewSupports(){
-  const rows = state.supports.map((s,i)=>`<tr>
-    <td class="label-cell">${s.nom}</td><td class="label-cell">${s.type}</td><td class="label-cell">${s.disponibilite}</td>
-    <td>${effectiveDispoDate(s)? fmtDate(effectiveDispoDate(s)) : (s.dispoMode==='immediat'||!s.dispoMode?'Immédiat':'—')}</td>
-    <td>${s.delaiJouissance||0} mois</td>
-    <td style="white-space:nowrap">
-      <button class="btn-edit" data-move-support-up="${s.id}" ${i===0?'disabled':''} title="Monter">▲</button>
-      <button class="btn-edit" data-move-support-down="${s.id}" ${i===state.supports.length-1?'disabled':''} title="Descendre">▼</button>
-      <button class="btn-edit" data-edit-support="${s.id}">Modifier</button><button class="btn-del" data-del-support="${s.id}">Suppr.</button>
-    </td>
-  </tr>`).join('');
-  const e = editing.support ? state.supports.find(s=>s.id===editing.support) : null;
-  const typeRows = state.types.map((t,i)=>`<tr>
-    <td><input class="type-rename" data-type-idx="${i}" value="${t}"></td>
-    <td><button class="btn-del" data-del-type="${t}">Supprimer</button></td>
-  </tr>`).join('');
-  const dispoRows = state.dispos.map((t,i)=>`<tr>
-    <td><input class="dispo-rename" data-dispo-idx="${i}" value="${t}"></td>
-    <td style="white-space:nowrap">
-      <button class="btn-edit" data-move-dispo-up="${i}" ${i===0?'disabled':''} title="Monter">▲</button>
-      <button class="btn-edit" data-move-dispo-down="${i}" ${i===state.dispos.length-1?'disabled':''} title="Descendre">▼</button>
-      <button class="btn-del" data-del-dispo="${t}">Supprimer</button>
-    </td>
-  </tr>`).join('');
-  const supOptsForTaux = ()=>state.supports.map(sp=>`<option value="${sp.id}">${sp.nom}</option>`).join('');
-  const tauxRows = [];
-  state.supports.forEach(s=>{
-    Object.entries(s.tauxAnnonces||{}).sort((a,b)=>b[0]-a[0]).forEach(([annee,taux])=>{
-      tauxRows.push(`<tr><td class="label-cell">${s.nom}</td><td>${annee}</td><td>${taux} %</td>
-        <td><button class="btn-del" data-del-taux="${s.id}|${annee}">Suppr.</button></td></tr>`);
-    });
-  });
+function supportFormHTML(id){
+  const e = id ? state.supports.find(s=>s.id===id) : null;
   return `
-  <div class="card">
     <h3>${e?'Modifier le support':'Ajouter un support'}</h3>
     <form class="inline-form" id="formSupport">
       <div class="field"><label>Nom</label><input name="nom" required value="${e?e.nom:''}"></div>
@@ -1575,17 +1612,71 @@ function viewSupports(){
       <div class="field" id="dispoDureeField" style="${e&&e.dispoMode==='duree'?'':'display:none'}"><label>Années avant disponibilité</label><input name="dispoDureeAnnees" type="number" inputmode="numeric" min="0" step="1" value="${e&&e.dispoDureeAnnees?e.dispoDureeAnnees:''}"></div>
       <div class="field"><label>Délai jouissance (mois, SCPI)</label><input name="delaiJouissance" type="number" inputmode="numeric" min="0" value="${e?(e.delaiJouissance||0):0}"></div>
       <button class="btn" type="submit">${e?'Enregistrer':'Ajouter'}</button>
-      ${e?'<button class="btn secondary" type="button" id="cancelEditSupport">Annuler</button>':''}
-    </form>
+      <button class="btn secondary" type="button" id="cancelSupportModal">Annuler</button>
+    </form>`;
+}
+function openSupportModal(id){
+  showModal(supportFormHTML(id));
+  const dm = document.getElementById('dispoModeSel');
+  if(dm) dm.onchange = ()=>{
+    document.getElementById('dispoDateField').style.display = dm.value==='date' ? '' : 'none';
+    document.getElementById('dispoDureeField').style.display = dm.value==='duree' ? '' : 'none';
+  };
+  document.getElementById('cancelSupportModal').onclick = closeModal;
+  document.getElementById('formSupport').onsubmit = e=>{
+    e.preventDefault(); const fd = new FormData(e.target);
+    const dispoMode = fd.get('dispoMode')||'immediat';
+    let dateDisponibilite = null, dispoDureeAnnees = null;
+    if(dispoMode==='date'){
+      const dispoRaw = (fd.get('dateDisponibilite')||'').trim();
+      if(dispoRaw){ dateDisponibilite = frToIso(dispoRaw); if(!dateDisponibilite){ alert('Date de disponibilité invalide : utilise le format JJ/MM/AAAA.'); return; } }
+    } else if(dispoMode==='duree'){
+      dispoDureeAnnees = fd.get('dispoDureeAnnees') ? Number(fd.get('dispoDureeAnnees')) : null;
+    }
+    const obj = {nom:fd.get('nom'), type:fd.get('type'), disponibilite:fd.get('disponibilite'), dispoMode, dateDisponibilite, dispoDureeAnnees, delaiJouissance:Number(fd.get('delaiJouissance')||0)};
+    if(id){ Object.assign(state.supports.find(s=>s.id===id), obj); }
+    else state.supports.push({id:uid(), tauxAnnonces:{}, ...obj});
+    saveState(); closeModal(); renderTab('supports');
+  };
+}
+function viewSupports(){
+  const rows = state.supports.map(s=>`<tr data-drag-id="${s.id}">
+    <td class="drag-handle">${ICONS.drag}</td>
+    <td class="label-cell">${s.nom}</td><td class="label-cell">${s.type}</td><td class="label-cell">${s.disponibilite}</td>
+    <td>${effectiveDispoDate(s)? fmtDate(effectiveDispoDate(s)) : (s.dispoMode==='immediat'||!s.dispoMode?'Immédiat':'—')}</td>
+    <td>${s.delaiJouissance||0} mois</td>
+    <td style="white-space:nowrap">${editBtn('edit-support', s.id)}${delBtn('del-support', s.id)}</td>
+  </tr>`).join('');
+  const typeRows = state.types.map((t,i)=>`<tr data-drag-id="${i}">
+    <td class="drag-handle">${ICONS.drag}</td>
+    <td><input class="type-rename" data-type-idx="${i}" value="${t}"></td>
+    <td>${delBtn('del-type', t)}</td>
+  </tr>`).join('');
+  const dispoRows = state.dispos.map((t,i)=>`<tr data-drag-id="${i}">
+    <td class="drag-handle">${ICONS.drag}</td>
+    <td><input class="dispo-rename" data-dispo-idx="${i}" value="${t}"></td>
+    <td>${delBtn('del-dispo', t)}</td>
+  </tr>`).join('');
+  const supOptsForTaux = ()=>state.supports.map(sp=>`<option value="${sp.id}">${sp.nom}</option>`).join('');
+  const tauxRows = [];
+  state.supports.forEach(s=>{
+    Object.entries(s.tauxAnnonces||{}).sort((a,b)=>b[0]-a[0]).forEach(([annee,taux])=>{
+      tauxRows.push(`<tr><td class="label-cell">${s.nom}</td><td>${annee}</td><td>${taux} %</td>
+        <td>${delBtn('del-taux', s.id+'|'+annee)}</td></tr>`);
+    });
+  });
+  return `
+  <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+    <h3 style="margin:0">Supports enregistrés</h3>
+    <button class="btn" type="button" id="openAddSupportBtn">+ Ajouter un support</button>
   </div>
-  <div class="card">
-    <h3>Supports enregistrés</h3>
-    ${state.supports.length? `<table><thead><tr><th>Nom</th><th>Type</th><th>Disponibilité</th><th>Disponible le</th><th>Délai jouissance</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">Aucun support pour le moment.</div>'}
+  <div class="card" style="margin-top:-14px">
+    ${state.supports.length? `<table id="supportsTable"><thead><tr><th></th><th>Nom</th><th>Type</th><th>Disponibilité</th><th>Disponible le</th><th>Délai jouissance</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">Aucun support pour le moment. Glisse la poignée pour réordonner.</div>'}
   </div>
   <div class="card">
     <h3>Types de support</h3>
     <div class="sub">Modifie un nom (valide en cliquant hors du champ) ou supprime un type inutilisé ; ajoute-en un nouveau si besoin.</div>
-    <table><thead><tr><th>Type</th><th></th></tr></thead><tbody>${typeRows}</tbody></table>
+    <table id="typesTable"><thead><tr><th></th><th>Type</th><th></th></tr></thead><tbody>${typeRows}</tbody></table>
     <form class="inline-form" id="formType" style="margin-top:12px">
       <div class="field"><label>Nouveau type</label><input name="newType" required></div>
       <button class="btn" type="submit">Ajouter</button>
@@ -1594,7 +1685,7 @@ function viewSupports(){
   <div class="card">
     <h3>Types de disponibilité (liquidités)</h3>
     <div class="sub">Catégories utilisées pour qualifier l'accès à ton épargne (liquide, bloqué, etc.). Modifie ou ajoute selon tes besoins.</div>
-    <table><thead><tr><th>Type</th><th></th></tr></thead><tbody>${dispoRows}</tbody></table>
+    <table id="dispoTable"><thead><tr><th></th><th>Type</th><th></th></tr></thead><tbody>${dispoRows}</tbody></table>
     <form class="inline-form" id="formDispo" style="margin-top:12px">
       <div class="field"><label>Nouveau type de disponibilité</label><input name="newDispo" required></div>
       <button class="btn" type="submit">Ajouter</button>
@@ -1615,6 +1706,49 @@ function viewSupports(){
 }
 
 // ---- MOUVEMENTS ----
+function mouvementFormHTML(id){
+  const e = id ? state.mouvements.find(m=>m.id===id) : null;
+  const defaultSupport = e ? e.supportId : (lastSupportId && state.supports.some(s=>s.id===lastSupportId) ? lastSupportId : (state.supports[0]&&state.supports[0].id));
+  const defaultType = e ? e.type : 'versement';
+  const supOpts = sel=>state.supports.map(sp=>`<option value="${sp.id}" ${sel===sp.id?'selected':''}>${sp.nom}</option>`).join('');
+  return `
+    <h3>${e?'Modifier le mouvement':'Ajouter un mouvement'}</h3>
+    <div class="helptext">Le montant est toujours saisi positif, le type détermine le sens. Pour un intérêt perçu début N+1 mais économiquement rattaché à l'année N (ex. coupon SCPI du 4ᵉ trimestre), indique l'année de rattachement N. Les frais de souscription restent indicatifs.</div>
+    <form class="inline-form" id="formMouvement">
+      <div class="field"><label>Support</label><select name="supportId">${supOpts(defaultSupport)}</select></div>
+      <div class="field"><label>Type</label><select name="type" id="mvtType">
+        <option value="versement" ${defaultType==='versement'?'selected':''}>Versement</option>
+        <option value="retrait" ${defaultType==='retrait'?'selected':''}>Retrait</option>
+        <option value="interet" ${defaultType==='interet'?'selected':''}>Intérêts perçus</option>
+      </select></div>
+      <div class="field"><label>Date (JJ/MM/AAAA)</label>${dateInputHTML('date', e?e.date:null, true)}</div>
+      <div class="field"><label>Montant (€)</label><input name="montant" type="number" inputmode="decimal" step="0.01" min="0" required value="${e?Math.abs(e.montant):''}"></div>
+      <div class="field" id="rattachementField" style="${defaultType==='interet'?'':'display:none'}"><label>Année de rattachement</label><input name="anneeRattachement" type="number" inputmode="numeric" value="${e&&e.anneeRattachement?e.anneeRattachement:new Date().getFullYear()}"></div>
+      <div class="field"><label>Dont frais (€)</label><input name="fraisMontant" type="number" inputmode="decimal" step="0.01" value="${e?(e.fraisMontant||''):''}"></div>
+      <div class="field"><label>Dont frais (%)</label><input name="fraisPourcent" type="number" inputmode="decimal" step="0.01" value="${e?(e.fraisPourcent||''):''}"></div>
+      <button class="btn" type="submit">${e?'Enregistrer':'Ajouter'}</button>
+      <button class="btn secondary" type="button" id="cancelMouvementModal">Annuler</button>
+    </form>`;
+}
+function openMouvementModal(id){
+  showModal(mouvementFormHTML(id));
+  const typeSel = document.getElementById('mvtType');
+  if(typeSel) typeSel.onchange = ()=>{ const rf=document.getElementById('rattachementField'); if(rf) rf.style.display = typeSel.value==='interet' ? '' : 'none'; };
+  document.getElementById('cancelMouvementModal').onclick = closeModal;
+  document.getElementById('formMouvement').onsubmit = e=>{
+    e.preventDefault(); const fd = new FormData(e.target);
+    const iso = frToIso(fd.get('date'));
+    if(!iso){ alert('Date invalide : utilise le format JJ/MM/AAAA.'); return; }
+    const type = fd.get('type');
+    const obj = {supportId:fd.get('supportId'), date:iso, type, montant:Math.abs(Number(fd.get('montant'))),
+      anneeRattachement: type==='interet' ? Number(fd.get('anneeRattachement')) : null,
+      fraisMontant:fd.get('fraisMontant')?Number(fd.get('fraisMontant')):null, fraisPourcent:fd.get('fraisPourcent')?Number(fd.get('fraisPourcent')):null};
+    lastSupportId = obj.supportId;
+    if(id){ Object.assign(state.mouvements.find(m=>m.id===id), obj); }
+    else state.mouvements.push({id:uid(), ...obj});
+    saveState(); closeModal(); renderAll();
+  };
+}
 function viewMouvements(){
   const supOpts = sel=>state.supports.map(sp=>`<option value="${sp.id}" ${sel===sp.id?'selected':''}>${sp.nom}</option>`).join('');
   const typeLabel = t=> t==='versement'?'Versement':t==='retrait'?'Retrait':'Intérêts perçus';
@@ -1631,34 +1765,16 @@ function viewMouvements(){
       <td class="label-cell"><span class="pill">${typeLabel(m.type)}</span>${m.type==='interet'?` <span class="pill">rattaché ${m.anneeRattachement}</span>`:''}</td>
       <td class="${m.type==='retrait'?'neg':'pos'}">${fmtEUR(m.montant)}</td>
       <td>${m.fraisMontant?fmtEUR(m.fraisMontant):''}${m.fraisPourcent?' / '+m.fraisPourcent+'%':''}</td>
-      <td><button class="btn-edit" data-edit-mouvement="${m.id}">Modifier</button><button class="btn-del" data-del-mouvement="${m.id}">Suppr.</button></td>
+      <td>${editBtn('edit-mouvement', m.id)}${delBtn('del-mouvement', m.id)}</td>
     </tr>`;
   }).join('');
-  const e = editing.mouvement ? state.mouvements.find(m=>m.id===editing.mouvement) : null;
-  const defaultSupport = e ? e.supportId : (lastSupportId && state.supports.some(s=>s.id===lastSupportId) ? lastSupportId : (state.supports[0]&&state.supports[0].id));
-  const defaultType = e ? e.type : 'versement';
   if(state.supports.length===0) return `<div class="card"><div class="empty">Ajoute d'abord un support.</div></div>`;
   return `
-  <div class="card">
-    <h3>${e?'Modifier le mouvement':'Ajouter un mouvement'}</h3>
-    <div class="helptext">Le montant est toujours saisi positif, le type détermine le sens. Pour un intérêt perçu début N+1 mais économiquement rattaché à l'année N (ex. coupon SCPI du 4ᵉ trimestre), indique l'année de rattachement N : il comptera dans la performance de cette année-là, pas celle du paiement. Les frais de souscription restent indicatifs (déjà reflétés par la valorisation).</div>
-    <form class="inline-form" id="formMouvement">
-      <div class="field"><label>Support</label><select name="supportId">${supOpts(defaultSupport)}</select></div>
-      <div class="field"><label>Type</label><select name="type" id="mvtType">
-        <option value="versement" ${defaultType==='versement'?'selected':''}>Versement</option>
-        <option value="retrait" ${defaultType==='retrait'?'selected':''}>Retrait</option>
-        <option value="interet" ${defaultType==='interet'?'selected':''}>Intérêts perçus</option>
-      </select></div>
-      <div class="field"><label>Date (JJ/MM/AAAA)</label>${dateInputHTML('date', e?e.date:null, true)}</div>
-      <div class="field"><label>Montant (€)</label><input name="montant" type="number" inputmode="decimal" step="0.01" min="0" required value="${e?Math.abs(e.montant):''}"></div>
-      <div class="field" id="rattachementField" style="${defaultType==='interet'?'':'display:none'}"><label>Année de rattachement</label><input name="anneeRattachement" type="number" inputmode="numeric" value="${e&&e.anneeRattachement?e.anneeRattachement:new Date().getFullYear()}"></div>
-      <div class="field"><label>Dont frais (€)</label><input name="fraisMontant" type="number" inputmode="decimal" step="0.01" value="${e?(e.fraisMontant||''):''}"></div>
-      <div class="field"><label>Dont frais (%)</label><input name="fraisPourcent" type="number" inputmode="decimal" step="0.01" value="${e?(e.fraisPourcent||''):''}"></div>
-      <button class="btn" type="submit">${e?'Enregistrer':'Ajouter'}</button>
-      ${e?'<button class="btn secondary" type="button" id="cancelEditMouvement">Annuler</button>':''}
-    </form>
+  <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+    <h3 style="margin:0">Historique des mouvements</h3>
+    <button class="btn" type="button" id="openAddMouvementBtn">+ Ajouter un mouvement</button>
   </div>
-  <div class="card"><h3>Historique des mouvements</h3>
+  <div class="card" style="margin-top:-14px">
     <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:end;margin-bottom:14px">
       <div class="field"><label>Filtrer par support</label><select id="mvtFilterSupport"><option value="">Tous les supports</option>${state.supports.map(s=>`<option value="${s.id}" ${mouvementsFilter.supportId===s.id?'selected':''}>${s.nom}</option>`).join('')}</select></div>
       <div class="field"><label>Depuis</label><input type="text" inputmode="numeric" class="date-mask" id="mvtFilterSince" placeholder="JJ/MM/AAAA" maxlength="10" value="${mouvementsFilter.since?isoToFr(mouvementsFilter.since):''}"></div>
@@ -1671,10 +1787,69 @@ function viewMouvements(){
 }
 
 // ---- ACTIONS ----
+// Récupération du dernier cours : service tiers gratuit (Stooq), sans garantie de disponibilité ni de couverture
+// de tous les marchés — le ticker doit inclure le suffixe de place (ex. AAPL.US, MC.FR).
+async function fetchStockPrice(ticker){
+  const url = `https://stooq.com/q/l/?s=${encodeURIComponent(ticker.trim())}&f=sd2t2ohlcv&h&e=csv`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('Service indisponible');
+  const text = await res.text();
+  const lines = text.trim().split('\n');
+  if(lines.length<2) throw new Error('Réponse vide');
+  const cols = lines[1].split(',');
+  const close = parseFloat(cols[6]);
+  if(!close || isNaN(close)) throw new Error('Ticker non reconnu');
+  return close;
+}
+async function refreshActionPrice(id){
+  const a = state.actions.find(x=>x.id===id);
+  if(!a || !a.ticker){ alert("Renseigne un ticker pour cette ligne avant de rafraîchir (ex. AAPL.US, MC.FR)."); return; }
+  try{ a.coursActuel = await fetchStockPrice(a.ticker); saveState(); renderTab('actions'); }
+  catch(err){ alert(`Impossible de récupérer le cours pour "${a.ticker}" : ${err.message}. Vérifie le format du ticker ou mets à jour manuellement.`); }
+}
+async function refreshAllActionPrices(){
+  const withTicker = state.actions.filter(a=>a.ticker);
+  if(withTicker.length===0){ alert('Aucune ligne avec un ticker renseigné.'); return; }
+  let ok=0, fail=0;
+  for(const a of withTicker){
+    try{ a.coursActuel = await fetchStockPrice(a.ticker); ok++; }catch(e){ fail++; }
+  }
+  saveState(); renderTab('actions');
+  alert(`${ok} cours mis à jour${fail? `, ${fail} échec(s) (ticker non reconnu ou service indisponible)`:''}.`);
+}
+function actionFormHTML(id){
+  const e = id ? state.actions.find(a=>a.id===id) : null;
+  const supOpts = ()=>state.supports.map(sp=>`<option value="${sp.id}" ${e&&e.supportId===sp.id?'selected':''}>${sp.nom} (${sp.type})</option>`).join('');
+  return `
+    <h3>${e?"Modifier la ligne":'Ajouter une action'}</h3>
+    <div class="helptext">La valeur de ces positions s'ajoute automatiquement à la valorisation "aujourd'hui" du support parent. Le ticker doit inclure le suffixe de marché pour le rafraîchissement automatique du cours (ex. <code>AAPL.US</code>, <code>MC.FR</code>).</div>
+    <form class="inline-form" id="formAction">
+      <div class="field"><label>Support (PEA / CTO…)</label><select name="supportId">${supOpts()}</select></div>
+      <div class="field"><label>Nom</label><input name="nom" required value="${e?e.nom:''}"></div>
+      <div class="field"><label>Ticker (optionnel)</label><input name="ticker" value="${e&&e.ticker?e.ticker:''}"></div>
+      <div class="field"><label>Quantité</label><input name="quantite" type="number" inputmode="decimal" step="0.0001" required value="${e?e.quantite:''}"></div>
+      <div class="field"><label>Prix de revient moyen (€)</label><input name="pru" type="number" inputmode="decimal" step="0.01" required value="${e?e.pru:''}"></div>
+      <div class="field"><label>Cours actuel (€)</label><input name="coursActuel" type="number" inputmode="decimal" step="0.01" required value="${e?e.coursActuel:''}"></div>
+      <div class="field"><label>Cours cible / objectif (€, optionnel)</label><input name="coursCible" type="number" inputmode="decimal" step="0.01" value="${e&&e.coursCible?e.coursCible:''}"></div>
+      <button class="btn" type="submit">${e?'Enregistrer':'Ajouter'}</button>
+      <button class="btn secondary" type="button" id="cancelActionModal">Annuler</button>
+    </form>`;
+}
+function openActionModal(id){
+  showModal(actionFormHTML(id));
+  document.getElementById('cancelActionModal').onclick = closeModal;
+  document.getElementById('formAction').onsubmit = e=>{
+    e.preventDefault(); const fd = new FormData(e.target);
+    const obj = {supportId:fd.get('supportId'), nom:fd.get('nom'), ticker:(fd.get('ticker')||'').trim()||null,
+      quantite:Number(fd.get('quantite')), pru:Number(fd.get('pru')), coursActuel:Number(fd.get('coursActuel')),
+      coursCible: fd.get('coursCible')?Number(fd.get('coursCible')):null};
+    if(id){ Object.assign(state.actions.find(a=>a.id===id), obj); }
+    else state.actions.push({id:uid(), ...obj});
+    saveState(); closeModal(); renderAll();
+  };
+}
 function viewActions(){
   if(state.supports.length===0) return `<div class="card"><div class="empty">Ajoute d'abord un support (PEA, compte-titres…) pour pouvoir y rattacher des actions.</div></div>`;
-  const supOpts = sel=>state.supports.map(sp=>`<option value="${sp.id}" ${sel===sp.id?'selected':''}>${sp.nom} (${sp.type})</option>`).join('');
-  const e = editing.action ? state.actions.find(a=>a.id===editing.action) : null;
   const rows = state.actions.slice().sort((a,b)=>a.nom.localeCompare(b.nom)).map(a=>{
     const sup = state.supports.find(s=>s.id===a.supportId);
     const valeurActuelle = a.quantite*a.coursActuel;
@@ -1692,62 +1867,103 @@ function viewActions(){
       <td class="label-cell">${sup?sup.nom:'?'}</td>
       <td>${a.quantite}</td>
       <td>${fmtEUR(a.pru)}</td>
-      <td>${fmtEUR(a.coursActuel)}</td>
+      <td>${fmtEUR(a.coursActuel)}${a.ticker?` <button type="button" class="icon-btn" data-refresh-action="${a.id}" title="Rafraîchir le cours">${ICONS.sync}</button>`:''}</td>
       <td>${fmtEUR(valeurActuelle)}</td>
       <td class="${plusValue>0?'pos':plusValue<0?'neg':''}">${fmtEUR(plusValue)}${plusValuePct!==null?` (${fmtPct(plusValuePct)})`:''}</td>
       <td style="min-width:120px">${a.coursCible? `${fmtEUR(a.coursCible)}${progressBar}` : '—'}</td>
-      <td><button class="btn-edit" data-edit-action="${a.id}">Modifier</button><button class="btn-del" data-del-action="${a.id}">Suppr.</button></td>
+      <td>${editBtn('edit-action', a.id)}${delBtn('del-action', a.id)}</td>
     </tr>`;
   }).join('');
   return `
-  <div class="card">
-    <h3>${e?"Modifier la ligne":'Ajouter une action'}</h3>
-    <div class="helptext">La valeur de ces positions s'ajoute automatiquement à la valorisation "aujourd'hui" du support parent (elle remplace la saisie manuelle du jour, sans effacer ton historique de valorisations passées).</div>
-    <form class="inline-form" id="formAction">
-      <div class="field"><label>Support (PEA / CTO…)</label><select name="supportId">${supOpts(e?e.supportId:null)}</select></div>
-      <div class="field"><label>Nom</label><input name="nom" required value="${e?e.nom:''}"></div>
-      <div class="field"><label>Ticker (optionnel)</label><input name="ticker" value="${e&&e.ticker?e.ticker:''}"></div>
-      <div class="field"><label>Quantité</label><input name="quantite" type="number" inputmode="decimal" step="0.0001" required value="${e?e.quantite:''}"></div>
-      <div class="field"><label>Prix de revient moyen (€)</label><input name="pru" type="number" inputmode="decimal" step="0.01" required value="${e?e.pru:''}"></div>
-      <div class="field"><label>Cours actuel (€)</label><input name="coursActuel" type="number" inputmode="decimal" step="0.01" required value="${e?e.coursActuel:''}"></div>
-      <div class="field"><label>Cours cible / objectif (€, optionnel)</label><input name="coursCible" type="number" inputmode="decimal" step="0.01" value="${e&&e.coursCible?e.coursCible:''}"></div>
-      <button class="btn" type="submit">${e?'Enregistrer':'Ajouter'}</button>
-      ${e?'<button class="btn secondary" type="button" id="cancelEditAction">Annuler</button>':''}
-    </form>
+  <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+    <h3 style="margin:0">Lignes suivies</h3>
+    <button class="btn" type="button" id="openAddActionBtn">+ Ajouter une action</button>
   </div>
-  <div class="card"><h3>Lignes suivies</h3>
+  <div class="card" style="margin-top:-14px">
+    ${state.actions.some(a=>a.ticker)? `<button class="btn secondary" type="button" id="refreshAllActionsBtn" style="margin-bottom:14px">Rafraîchir tous les cours</button>`:''}
     ${state.actions.length? `<table><thead><tr><th>Valeur</th><th>Support</th><th>Qté</th><th>PRU</th><th>Cours actuel</th><th>Valeur actuelle</th><th>+/- value</th><th>Objectif</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">Aucune action suivie pour le moment.</div>'}
   </div>`;
 }
 
 // ---- VALORISATIONS ----
-function viewValorisations(){
-  const supOpts = s=>state.supports.map(sp=>`<option value="${sp.id}" ${s&&s.supportId===sp.id?'selected':''}>${sp.nom}</option>`).join('');
-  const rows = state.valorisations.slice().sort((a,b)=>a.date<b.date?1:-1).map(v=>{
-    const sup = state.supports.find(s=>s.id===v.supportId);
-    return `<tr><td>${fmtDate(v.date)}</td><td class="label-cell">${sup?sup.nom:'?'}</td><td>${fmtEUR(v.value)}</td>
-    <td><button class="btn-edit" data-edit-valo="${v.id}">Modifier</button><button class="btn-del" data-del-valo="${v.id}">Suppr.</button></td></tr>`;
-  }).join('');
-  const e = editing.valo ? state.valorisations.find(v=>v.id===editing.valo) : null;
-  if(state.supports.length===0) return `<div class="card"><div class="empty">Ajoute d'abord un support.</div></div>`;
+function valoFormHTML(id){
+  const e = id ? state.valorisations.find(v=>v.id===id) : null;
+  const supOpts = ()=>state.supports.map(sp=>`<option value="${sp.id}" ${e&&e.supportId===sp.id?'selected':''}>${sp.nom}</option>`).join('');
   return `
-  <div class="card">
     <h3>${e?'Modifier la valorisation':'Ajouter un relevé de valorisation'}</h3>
     <div class="helptext">Ajoute un point au 1er janvier de chaque année (pour calculer la performance annuelle) et un point récent (pour la valeur actuelle).</div>
     <form class="inline-form" id="formValo">
-      <div class="field"><label>Support</label><select name="supportId">${supOpts(e)}</select></div>
+      <div class="field"><label>Support</label><select name="supportId">${supOpts()}</select></div>
       <div class="field"><label>Date</label>${dateInputHTML('date', e?e.date:null, true)}</div>
       <div class="field"><label>Valeur (€)</label><input name="value" type="number" inputmode="decimal" step="0.01" required value="${e?e.value:''}"></div>
       <button class="btn" type="submit">${e?'Enregistrer':'Ajouter'}</button>
-      ${e?'<button class="btn secondary" type="button" id="cancelEditValo">Annuler</button>':''}
-    </form>
+      <button class="btn secondary" type="button" id="cancelValoModal">Annuler</button>
+    </form>`;
+}
+function openValoModal(id){
+  showModal(valoFormHTML(id));
+  document.getElementById('cancelValoModal').onclick = closeModal;
+  document.getElementById('formValo').onsubmit = e=>{
+    e.preventDefault(); const fd = new FormData(e.target);
+    const isoV = frToIso(fd.get('date'));
+    if(!isoV){ alert('Date invalide : utilise le format JJ/MM/AAAA.'); return; }
+    const obj = {supportId:fd.get('supportId'), date:isoV, value:Number(fd.get('value'))};
+    if(id){ Object.assign(state.valorisations.find(v=>v.id===id), obj); }
+    else state.valorisations.push({id:uid(), ...obj});
+    saveState(); closeModal(); renderAll();
+  };
+}
+function viewValorisations(){
+  const rows = state.valorisations.slice().sort((a,b)=>a.date<b.date?1:-1).map(v=>{
+    const sup = state.supports.find(s=>s.id===v.supportId);
+    return `<tr><td>${fmtDate(v.date)}</td><td class="label-cell">${sup?sup.nom:'?'}</td><td>${fmtEUR(v.value)}</td>
+    <td>${editBtn('edit-valo', v.id)}${delBtn('del-valo', v.id)}</td></tr>`;
+  }).join('');
+  if(state.supports.length===0) return `<div class="card"><div class="empty">Ajoute d'abord un support.</div></div>`;
+  return `
+  <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+    <h3 style="margin:0">Historique des valorisations</h3>
+    <button class="btn" type="button" id="openAddValoBtn">+ Ajouter une valorisation</button>
   </div>
-  <div class="card"><h3>Historique des valorisations</h3>
+  <div class="card" style="margin-top:-14px">
     ${state.valorisations.length? `<table><thead><tr><th>Date</th><th>Support</th><th>Valeur</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">Aucune valorisation.</div>'}
   </div>`;
 }
 
 // ---- EMPRUNTS ----
+function empruntFormHTML(id){
+  const ed = id ? state.emprunts.find(x=>x.id===id) : null;
+  const bienOpts = sel=>'<option value="">— Non rattaché —</option>'+state.supports.map(s=>`<option value="${s.id}" ${sel===s.id?'selected':''}>${s.nom} (${s.type})</option>`).join('');
+  return `
+    <h3>${ed?"Modifier l'emprunt":'Ajouter un emprunt'}</h3>
+    <form class="inline-form" id="formEmprunt">
+      <div class="field"><label>Nom</label><input name="nom" required value="${ed?ed.nom:''}"></div>
+      <div class="field"><label>Capital emprunté (€)</label><input name="capital" type="number" inputmode="decimal" step="0.01" required value="${ed?ed.capital:''}"></div>
+      <div class="field"><label>Taux annuel (%)</label><input name="taux" type="number" inputmode="decimal" step="0.01" required value="${ed?ed.taux:''}"></div>
+      <div class="field"><label>Durée (mois)</label><input name="duree" type="number" inputmode="numeric" required value="${ed?ed.duree:''}"></div>
+      <div class="field"><label>Date de départ</label>${dateInputHTML('dateDebut', ed?ed.dateDebut:null, true)}</div>
+      <div class="field"><label>Amortissement</label><select name="type"><option value="constant" ${ed&&ed.type==='constant'?'selected':''}>Mensualités constantes</option><option value="infine" ${ed&&ed.type==='infine'?'selected':''}>In fine</option></select></div>
+      <div class="field"><label>Assurance</label><select name="assuranceType"><option value="pourcentage" ${ed&&ed.assuranceType==='pourcentage'?'selected':''}>% annuel du capital initial</option><option value="montant" ${ed&&ed.assuranceType==='montant'?'selected':''}>Montant fixe mensuel</option></select></div>
+      <div class="field"><label>Valeur assurance</label><input name="assuranceValeur" type="number" inputmode="decimal" step="0.001" value="${ed&&ed.assuranceValeur?ed.assuranceValeur:''}"></div>
+      <div class="field"><label>Bien financé (optionnel)</label><select name="supportId">${bienOpts(ed?ed.supportId:null)}</select></div>
+      <div class="field"><label>Réaffecter le capital libéré vers (optionnel)</label><select name="supportReaffectation">${bienOpts(ed?ed.supportReaffectation:null)}</select></div>
+      <button class="btn" type="submit">${ed?'Enregistrer':'Ajouter'}</button>
+      <button class="btn secondary" type="button" id="cancelEmpruntModal">Annuler</button>
+    </form>`;
+}
+function openEmpruntModal(id){
+  showModal(empruntFormHTML(id));
+  document.getElementById('cancelEmpruntModal').onclick = closeModal;
+  document.getElementById('formEmprunt').onsubmit = e=>{
+    e.preventDefault(); const fd = new FormData(e.target);
+    const isoDebut = frToIso(fd.get('dateDebut'));
+    if(!isoDebut){ alert('Date de départ invalide : utilise le format JJ/MM/AAAA.'); return; }
+    const obj = {nom:fd.get('nom'), capital:Number(fd.get('capital')), taux:Number(fd.get('taux')), duree:Number(fd.get('duree')), dateDebut:isoDebut, type:fd.get('type'), assuranceType:fd.get('assuranceType'), assuranceValeur: fd.get('assuranceValeur')?Number(fd.get('assuranceValeur')):null, supportId: fd.get('supportId')||null, supportReaffectation: fd.get('supportReaffectation')||null};
+    if(id){ Object.assign(state.emprunts.find(x=>x.id===id), obj); }
+    else state.emprunts.push({id:uid(), ...obj});
+    saveState(); closeModal(); renderAll();
+  };
+}
 function viewEmprunts(){
   const rows = state.emprunts.map(e=>{
     const restant = loanRemainingToday(e);
@@ -1770,36 +1986,22 @@ function viewEmprunts(){
       <td class="neg">${fmtEUR(summary.interetsPayes)}</td>
       <td>${fmtEUR(summary.interetsRestants)}</td>
       <td class="label-cell">${bienCell}</td>
-      <td><button class="btn-edit" data-edit-emprunt="${e.id}">Modifier</button><button class="btn-del" data-del-emprunt="${e.id}">Suppr.</button></td>
+      <td>${editBtn('edit-emprunt', e.id)}${delBtn('del-emprunt', e.id)}</td>
     </tr>`;
   }).join('');
-  const ed = editing.emprunt ? state.emprunts.find(x=>x.id===editing.emprunt) : null;
   const empOpts = ()=>state.emprunts.map(e=>`<option value="${e.id}">${e.nom}</option>`).join('');
-  const bienOpts = sel=>'<option value="">— Non rattaché —</option>'+state.supports.map(s=>`<option value="${s.id}" ${sel===s.id?'selected':''}>${s.nom} (${s.type})</option>`).join('');
   const prepayRows = state.remboursementsAnticipes.slice().sort((a,b)=>a.date<b.date?1:-1).map(p=>{
     const emp = state.emprunts.find(e=>e.id===p.empruntId);
     return `<tr><td>${fmtDate(p.date)}</td><td class="label-cell">${emp?emp.nom:'?'}</td><td>${fmtEUR(p.montant)}</td>
     <td class="label-cell">${p.mode==='mensualite'?'Mensualité réduite':'Durée réduite'}</td>
-    <td><button class="btn-del" data-del-prepay="${p.id}">Suppr.</button></td></tr>`;
+    <td>${delBtn('del-prepay', p.id)}</td></tr>`;
   }).join('');
   return `
-  <div class="card">
-    <h3>${ed?"Modifier l'emprunt":'Ajouter un emprunt'}</h3>
-    <form class="inline-form" id="formEmprunt">
-      <div class="field"><label>Nom</label><input name="nom" required value="${ed?ed.nom:''}"></div>
-      <div class="field"><label>Capital emprunté (€)</label><input name="capital" type="number" inputmode="decimal" step="0.01" required value="${ed?ed.capital:''}"></div>
-      <div class="field"><label>Taux annuel (%)</label><input name="taux" type="number" inputmode="decimal" step="0.01" required value="${ed?ed.taux:''}"></div>
-      <div class="field"><label>Durée (mois)</label><input name="duree" type="number" inputmode="numeric" required value="${ed?ed.duree:''}"></div>
-      <div class="field"><label>Date de départ</label>${dateInputHTML('dateDebut', ed?ed.dateDebut:null, true)}</div>
-      <div class="field"><label>Amortissement</label><select name="type"><option value="constant" ${ed&&ed.type==='constant'?'selected':''}>Mensualités constantes</option><option value="infine" ${ed&&ed.type==='infine'?'selected':''}>In fine</option></select></div>
-      <div class="field"><label>Assurance</label><select name="assuranceType"><option value="pourcentage" ${ed&&ed.assuranceType==='pourcentage'?'selected':''}>% annuel du capital initial</option><option value="montant" ${ed&&ed.assuranceType==='montant'?'selected':''}>Montant fixe mensuel</option></select></div>
-      <div class="field"><label>Valeur assurance</label><input name="assuranceValeur" type="number" inputmode="decimal" step="0.001" value="${ed&&ed.assuranceValeur?ed.assuranceValeur:''}"></div>
-      <div class="field"><label>Bien financé (optionnel)</label><select name="supportId">${bienOpts(ed?ed.supportId:null)}</select></div>
-      <button class="btn" type="submit">${ed?'Enregistrer':'Ajouter'}</button>
-      ${ed?'<button class="btn secondary" type="button" id="cancelEditEmprunt">Annuler</button>':''}
-    </form>
+  <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+    <h3 style="margin:0">Emprunts en cours</h3>
+    <button class="btn" type="button" id="openAddEmpruntBtn">+ Ajouter un emprunt</button>
   </div>
-  <div class="card"><h3>Emprunts en cours</h3>
+  <div class="card" style="margin-top:-14px">
     <div class="sub">Intérêts payés / restants calculés à la date du jour sur l'échéancier</div>
     ${state.emprunts.length? `<table><thead><tr><th>Nom</th><th>Capital</th><th>Taux</th><th>Durée</th><th>Type</th><th>Restant dû</th><th>Assurance</th><th>Mensualité totale</th><th>Intérêts payés</th><th>Intérêts restants</th><th>Bien financé</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">Aucun emprunt.</div>'}
   </div>
@@ -1819,40 +2021,47 @@ function viewEmprunts(){
 }
 
 // ---- PROJECTIONS ----
+let projectionSelectedScenario = null;
 function viewProjections(){
   if(state.supports.length===0 && state.emprunts.length===0) return `<div class="card"><div class="empty">Ajoute des supports et/ou emprunts pour lancer une projection.</div></div>`;
   if(!state.projection.scenarios) state.projection.scenarios = [];
+  if(projectionSelectedScenario && !state.projection.scenarios.some(sc=>sc.id===projectionSelectedScenario)) projectionSelectedScenario = null;
   const hypRows = state.supports.map(s=>`<tr>
     <td class="label-cell">${s.nom}</td>
     <td><input data-hyp="${s.id}" type="number" inputmode="decimal" step="0.1" style="width:80px" value="${state.projection.hypotheses[s.id]!==undefined?state.projection.hypotheses[s.id]:3}"> %/an</td>
   </tr>`).join('');
   const supOpts = ()=>state.supports.map(sp=>`<option value="${sp.id}">${sp.nom}</option>`).join('');
   const empOpts = ()=>state.emprunts.map(e=>`<option value="${e.id}">${e.nom}</option>`).join('');
-  const scenarioOpts = ()=>'<option value="">Commun (tous les scénarios)</option>'+state.projection.scenarios.map(sc=>`<option value="${sc.id}">${sc.nom}</option>`).join('');
-  const scenarioLabel = id=> id ? (state.projection.scenarios.find(sc=>sc.id===id)||{nom:'?'}).nom : 'Commun';
   const scenarioRows = state.projection.scenarios.map(sc=>`<tr>
     <td><input class="scenario-rename" data-scenario-id="${sc.id}" value="${sc.nom}"></td>
     <td><input type="color" class="scenario-color" data-scenario-id="${sc.id}" value="${sc.color}" style="width:44px;height:28px;padding:2px;background:none;border:1px solid var(--line);border-radius:4px"></td>
-    <td><button class="btn-del" data-del-scenario="${sc.id}">Supprimer</button></td>
+    <td>${delBtn('del-scenario', sc.id)}</td>
   </tr>`).join('');
-  const vrRows = state.projection.versementsRecurrents.map(v=>{
+
+  // Contexte courant : "Commun" (null) ou un scénario précis — pilote ce qui est affiché/ajouté ci-dessous
+  const scenarioTabs = `<button type="button" class="scenario-ctx-btn ${projectionSelectedScenario===null?'active':''}" data-ctx="">Commun</button>`
+    + state.projection.scenarios.map(sc=>`<button type="button" class="scenario-ctx-btn ${projectionSelectedScenario===sc.id?'active':''}" data-ctx="${sc.id}" style="${projectionSelectedScenario===sc.id?`border-color:${sc.color};color:${sc.color}`:''}">${sc.nom}</button>`).join('');
+
+  const vrFiltered = state.projection.versementsRecurrents.filter(v=> v.scenarioId===projectionSelectedScenario);
+  const vrRows = vrFiltered.map(v=>{
     const sup = state.supports.find(s=>s.id===v.supportId);
     return `<tr><td class="label-cell">${sup?sup.nom:'?'}</td><td>${fmtEUR(v.montant)}/mois</td><td>${v.dateFin?fmtDate(v.dateFin):'—'}</td>
-    <td><span class="scenario-tag ${v.scenarioId?'scenario-arb':'scenario-both'}">${scenarioLabel(v.scenarioId)}</span></td>
-    <td><button class="btn-del" data-del-vr="${v.id}">Suppr.</button></td></tr>`;
+    <td>${delBtn('del-vr', v.id)}</td></tr>`;
   }).join('');
-  const rsRows = state.projection.remboursementsSimules.map(r=>{
+  const rsFiltered = state.projection.remboursementsSimules.filter(r=> r.scenarioId===projectionSelectedScenario);
+  const rsRows = rsFiltered.map(r=>{
     const emp = state.emprunts.find(e=>e.id===r.empruntId);
     const src = r.sourceSupportId ? state.supports.find(s=>s.id===r.sourceSupportId) : null;
     return `<tr><td class="label-cell">${emp?emp.nom:'?'}</td><td>${fmtDate(r.date)}</td><td>${fmtEUR(r.montant)}</td>
     <td class="label-cell">${src?src.nom:'—'}</td>
-    <td><span class="scenario-tag ${r.scenarioId?'scenario-arb':'scenario-both'}">${scenarioLabel(r.scenarioId)}</span></td>
-    <td><button class="btn-del" data-del-rs="${r.id}">Suppr.</button></td></tr>`;
+    <td>${delBtn('del-rs', r.id)}</td></tr>`;
   }).join('');
+  const ctxLabel = projectionSelectedScenario ? (state.projection.scenarios.find(sc=>sc.id===projectionSelectedScenario)||{nom:''}).nom : 'Commun (tous les scénarios)';
+
   return `
   <div class="card">
     <h3>Scénarios</h3>
-    <div class="sub">Crée plusieurs scénarios nommés pour comparer des stratégies différentes sur le même graphique. Un événement "Commun" s'applique à tous les scénarios (et au scénario de base).</div>
+    <div class="sub">Crée plusieurs scénarios nommés pour comparer des stratégies différentes sur le même graphique. "Commun" s'applique partout, y compris au scénario de base.</div>
     ${state.projection.scenarios.length? `<table><thead><tr><th>Nom</th><th>Couleur</th><th></th></tr></thead><tbody>${scenarioRows}</tbody></table>`:'<div class="empty">Aucun scénario créé pour le moment — le graphique montre uniquement le socle commun.</div>'}
     <form class="inline-form" id="formScenario" style="margin-top:12px">
       <div class="field"><label>Nouveau scénario</label><input name="nom" required></div>
@@ -1866,31 +2075,35 @@ function viewProjections(){
     <div style="margin-top:14px" class="field"><label>Horizon de projection (années)</label><input id="horizonInput" type="number" inputmode="numeric" min="1" max="40" value="${state.projection.horizonAnnees}" style="width:80px"></div>
   </div>
   <div class="card">
-    <h3>Versements récurrents</h3>
-    <div class="sub">Rattache un versement récurrent au socle commun ou à un scénario précis</div>
+    <h3>Événements de la projection</h3>
+    <div class="sub">Choisis un contexte : les versements récurrents et remboursements ajoutés ci-dessous lui seront rattachés</div>
+    <div class="scenario-ctx-bar">${scenarioTabs}</div>
+    <div class="sub" style="margin:10px 0 0">Contexte actif : <strong style="color:var(--text)">${ctxLabel}</strong></div>
+  </div>
+  <div class="card">
+    <h3>Versements récurrents — ${ctxLabel}</h3>
     ${state.supports.length? `
     <form class="inline-form" id="formVR">
       <div class="field"><label>Support</label><select name="supportId">${supOpts()}</select></div>
       <div class="field"><label>Montant mensuel (€)</label><input name="montant" type="number" inputmode="numeric" step="1" required></div>
       <div class="field"><label>Fin (optionnel)</label>${dateInputHTML('dateFin', null, false)}</div>
-      <div class="field"><label>Scénario</label><select name="scenarioId">${scenarioOpts()}</select></div>
-      <button class="btn" type="submit">Ajouter</button>
+      <button class="btn" type="submit">Ajouter à "${ctxLabel}"</button>
     </form>`:''}
-    ${state.projection.versementsRecurrents.length? `<table><thead><tr><th>Support</th><th>Montant</th><th>Fin</th><th>Scénario</th><th></th></tr></thead><tbody>${vrRows}</tbody></table>`:'<div class="empty">Aucun versement récurrent.</div>'}
+    ${vrFiltered.length? `<table><thead><tr><th>Support</th><th>Montant</th><th>Fin</th><th></th></tr></thead><tbody>${vrRows}</tbody></table>`:'<div class="empty">Aucun versement récurrent dans ce contexte.</div>'}
   </div>
   <div class="card">
-    <h3>Remboursements anticipés simulés</h3>
-    <div class="sub">Teste l'effet d'un remboursement anticipé futur — optionnellement financé par un retrait sur un placement à cette même date, pour un scénario cohérent de bout en bout</div>
+    <h3>Remboursements anticipés simulés — ${ctxLabel}</h3>
+    <div class="sub">Optionnellement financé par un retrait sur un placement à cette même date. Les intérêts des supports sont capitalisés mensuellement dans la projection. Si le remboursement libère de la mensualité (durée écourtée ou mensualité réduite) et qu'une "réaffectation" a été définie sur l'emprunt (onglet Emprunts), ce capital libéré est automatiquement réinvesti dans le support choisi à partir de ce moment-là.</div>
     ${state.emprunts.length? `
     <form class="inline-form" id="formRS">
       <div class="field"><label>Emprunt</label><select name="empruntId">${empOpts()}</select></div>
       <div class="field"><label>Date</label>${dateInputHTML('date', null, true)}</div>
       <div class="field"><label>Montant (€)</label><input name="montant" type="number" inputmode="numeric" step="1" required></div>
       <div class="field"><label>Financé par (optionnel)</label><select name="sourceSupportId"><option value="">— Argent externe —</option>${supOpts()}</select></div>
-      <div class="field"><label>Scénario</label><select name="scenarioId">${scenarioOpts()}</select></div>
-      <button class="btn" type="submit">Ajouter</button>
+      <div class="field"><label>Effet</label><select name="mode"><option value="duree">Réduire la durée</option><option value="mensualite">Réduire la mensualité</option></select></div>
+      <button class="btn" type="submit">Ajouter à "${ctxLabel}"</button>
     </form>`: '<div class="empty">Aucun emprunt enregistré.</div>'}
-    ${state.projection.remboursementsSimules.length? `<table><thead><tr><th>Emprunt</th><th>Date</th><th>Montant</th><th>Financé par</th><th>Scénario</th><th></th></tr></thead><tbody>${rsRows}</tbody></table>`:''}
+    ${rsFiltered.length? `<table><thead><tr><th>Emprunt</th><th>Date</th><th>Montant</th><th>Financé par</th><th></th></tr></thead><tbody>${rsRows}</tbody></table>`:'<div class="empty">Aucun remboursement simulé dans ce contexte.</div>'}
   </div>
   <div class="card">
     <h3>Patrimoine net projeté</h3>
@@ -1905,9 +2118,10 @@ function projectPatrimoine(scenarioId){
   // support values
   let supVals = {};
   state.supports.forEach(s=>{ const v = displayValue(s.id,null); supVals[s.id]=v?v.value:0; });
-  // loan capitals (start from today's remaining)
-  let loanCap = {};
-  state.emprunts.forEach(e=>{ loanCap[e.id]=loanRemainingToday(e); });
+  // loan capitals (start from today's remaining) et mensualité réellement en cours aujourd'hui (pas la mensualité d'origine,
+  // qui peut avoir été réduite par un remboursement anticipé passé avec effet "mensualité")
+  let loanCap = {}, curMensualite = {};
+  state.emprunts.forEach(e=>{ loanCap[e.id]=loanRemainingToday(e); curMensualite[e.id]=loanCurrentMensualite(e); });
   const points = [];
   let totalInterets = 0, totalAssurance = 0;
   for(let m=0;m<=months;m++){
@@ -1922,21 +2136,35 @@ function projectPatrimoine(scenarioId){
           supVals[s.id]+=v.montant;
         });
       });
-      // amortize loans (capital, intérêts et assurance)
+      // amortize loans (capital, intérêts, assurance) et réaffectation du capital libéré
       state.emprunts.forEach(e=>{
-        if(loanCap[e.id]<=0.5) return;
         const rate = e.taux/100/12;
-        const n = e.duree;
-        const mensualite = e.type==='constant' ? (rate===0? e.capital/n : e.capital*rate/(1-Math.pow(1+rate,-n))) : e.capital*rate;
-        const interet = loanCap[e.id]*rate;
-        let principal = e.type==='constant' ? (mensualite-interet) : 0;
+        const mensualiteInitiale = loanMensualiteInitiale(e);
+        let interet = 0, principal = 0, prepay = 0;
         const applicable = state.projection.remboursementsSimules.filter(r=>r.empruntId===e.id && r.date.slice(0,7)===iso.slice(0,7) && (r.scenarioId===null || (scenarioId!==null && r.scenarioId===scenarioId)));
-        const prepay = applicable.reduce((s,r)=>s+r.montant,0);
-        loanCap[e.id] = Math.max(0, loanCap[e.id]-principal-prepay);
-        totalInterets += interet;
-        totalAssurance += loanInsuranceMonthly(e);
-        // le remboursement anticipé simulé peut être financé par un retrait sur un placement, à la même date
-        applicable.forEach(r=>{ if(r.sourceSupportId && supVals[r.sourceSupportId]!==undefined) supVals[r.sourceSupportId] = Math.max(0, supVals[r.sourceSupportId]-r.montant); });
+        if(loanCap[e.id]>0.5){
+          interet = loanCap[e.id]*rate;
+          principal = e.type==='constant' ? (curMensualite[e.id]-interet) : 0;
+          if(e.type==='infine' && loanCap[e.id]-Math.max(0,applicable.reduce((s,r)=>s+r.montant,0))<=0.5) principal = loanCap[e.id];
+          prepay = applicable.reduce((s,r)=>s+r.montant,0);
+          loanCap[e.id] = Math.max(0, loanCap[e.id]-principal-prepay);
+          totalInterets += interet;
+          totalAssurance += loanInsuranceMonthly(e);
+          // le remboursement anticipé simulé peut être financé par un retrait sur un placement, à la même date
+          applicable.forEach(r=>{ if(r.sourceSupportId && supVals[r.sourceSupportId]!==undefined) supVals[r.sourceSupportId] = Math.max(0, supVals[r.sourceSupportId]-r.montant); });
+          // si l'effet demandé est "réduire la mensualité", on recalcule la mensualité en cours sur la durée restante
+          if(e.type==='constant' && prepay>0 && applicable.some(r=>r.mode==='mensualite') && loanCap[e.id]>0){
+            const moisEcoules = Math.round((date-new Date(e.dateDebut))/(30.44*86400000));
+            const remaining = Math.max(1, e.duree-moisEcoules);
+            curMensualite[e.id] = rate===0 ? loanCap[e.id]/remaining : loanCap[e.id]*rate/(1-Math.pow(1+rate,-remaining));
+          }
+        }
+        // capital libéré ce mois-ci (mensualité d'origine non dépensée, prêt soldé ou mensualité réduite) : réaffecté si une destination est définie
+        const paiementReel = principal + interet;
+        const libere = Math.max(0, mensualiteInitiale - paiementReel);
+        if(e.supportReaffectation && libere>0 && supVals[e.supportReaffectation]!==undefined){
+          supVals[e.supportReaffectation] += libere;
+        }
       });
     }
     const assets = Object.values(supVals).reduce((a,b)=>a+b,0);
@@ -2118,44 +2346,21 @@ function attachHandlers(tab){
   }
 
   if(tab==='supports'){
-    const dm = document.getElementById('dispoModeSel');
-    if(dm) dm.onchange = ()=>{
-      document.getElementById('dispoDateField').style.display = dm.value==='date' ? '' : 'none';
-      document.getElementById('dispoDureeField').style.display = dm.value==='duree' ? '' : 'none';
-    };
-    const f = document.getElementById('formSupport');
-    f.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(f);
-      const dispoMode = fd.get('dispoMode')||'immediat';
-      let dateDisponibilite = null, dispoDureeAnnees = null;
-      if(dispoMode==='date'){
-        const dispoRaw = (fd.get('dateDisponibilite')||'').trim();
-        if(dispoRaw){ dateDisponibilite = frToIso(dispoRaw); if(!dateDisponibilite){ alert('Date de disponibilité invalide : utilise le format JJ/MM/AAAA.'); return; } }
-      } else if(dispoMode==='duree'){
-        dispoDureeAnnees = fd.get('dispoDureeAnnees') ? Number(fd.get('dispoDureeAnnees')) : null;
-      }
-      const obj = {nom:fd.get('nom'), type:fd.get('type'), disponibilite:fd.get('disponibilite'), dispoMode, dateDisponibilite, dispoDureeAnnees, delaiJouissance:Number(fd.get('delaiJouissance')||0)};
-      if(editing.support){ Object.assign(state.supports.find(s=>s.id===editing.support), obj); editing.support=null; }
-      else state.supports.push({id:uid(), tauxAnnonces:{}, ...obj});
-      saveState(); renderAll();
-    };
-    const cancel = document.getElementById('cancelEditSupport'); if(cancel) cancel.onclick=()=>{editing.support=null; renderTab('supports');};
-    document.querySelectorAll('[data-move-support-up]').forEach(b=>b.onclick=()=>{
-      const idx = state.supports.findIndex(s=>s.id===b.dataset.moveSupportUp);
-      if(idx>0){ [state.supports[idx-1],state.supports[idx]]=[state.supports[idx],state.supports[idx-1]]; saveState(); renderTab('supports'); }
+    const openBtn = document.getElementById('openAddSupportBtn'); if(openBtn) openBtn.onclick = ()=>openSupportModal(null);
+    enableRowDragReorder(document.getElementById('supportsTable'), ids=>{
+      const map = new Map(state.supports.map(s=>[s.id,s]));
+      state.supports = ids.map(id=>map.get(id)).filter(Boolean);
+      saveState(); renderTab('supports');
     });
-    document.querySelectorAll('[data-move-support-down]').forEach(b=>b.onclick=()=>{
-      const idx = state.supports.findIndex(s=>s.id===b.dataset.moveSupportDown);
-      if(idx>=0 && idx<state.supports.length-1){ [state.supports[idx+1],state.supports[idx]]=[state.supports[idx],state.supports[idx+1]]; saveState(); renderTab('supports'); }
+    enableRowDragReorder(document.getElementById('typesTable'), ids=>{
+      state.types = ids.map(i=>state.types[Number(i)]);
+      saveState(); renderTab('supports');
     });
-    document.querySelectorAll('[data-move-dispo-up]').forEach(b=>b.onclick=()=>{
-      const idx = Number(b.dataset.moveDispoUp);
-      if(idx>0){ [state.dispos[idx-1],state.dispos[idx]]=[state.dispos[idx],state.dispos[idx-1]]; saveState(); renderTab('supports'); }
+    enableRowDragReorder(document.getElementById('dispoTable'), ids=>{
+      state.dispos = ids.map(i=>state.dispos[Number(i)]);
+      saveState(); renderTab('supports');
     });
-    document.querySelectorAll('[data-move-dispo-down]').forEach(b=>b.onclick=()=>{
-      const idx = Number(b.dataset.moveDispoDown);
-      if(idx<state.dispos.length-1){ [state.dispos[idx+1],state.dispos[idx]]=[state.dispos[idx],state.dispos[idx+1]]; saveState(); renderTab('supports'); }
-    });
-    document.querySelectorAll('[data-edit-support]').forEach(b=>b.onclick=()=>{editing.support=b.dataset.editSupport; renderTab('supports');});
+    document.querySelectorAll('[data-edit-support]').forEach(b=>b.onclick=()=>openSupportModal(b.dataset.editSupport));
     document.querySelectorAll('[data-del-support]').forEach(b=>b.onclick=()=>{
       const id=b.dataset.delSupport;
       state.supports=state.supports.filter(s=>s.id!==id);
@@ -2223,8 +2428,7 @@ function attachHandlers(tab){
   }
 
   if(tab==='mouvements'){
-    const typeSel = document.getElementById('mvtType');
-    if(typeSel) typeSel.onchange = ()=>{ const rf=document.getElementById('rattachementField'); if(rf) rf.style.display = typeSel.value==='interet' ? '' : 'none'; };
+    const openBtn = document.getElementById('openAddMouvementBtn'); if(openBtn) openBtn.onclick = ()=>openMouvementModal(null);
     const fSup = document.getElementById('mvtFilterSupport');
     if(fSup) fSup.onchange = ()=>{ mouvementsFilter.supportId = fSup.value; renderTab('mouvements'); };
     const fSince = document.getElementById('mvtFilterSince');
@@ -2233,66 +2437,27 @@ function attachHandlers(tab){
     if(fUntil) fUntil.addEventListener('change', ()=>{ mouvementsFilter.until = frToIso(fUntil.value)||''; renderTab('mouvements'); });
     const fReset = document.getElementById('mvtFilterReset');
     if(fReset) fReset.onclick = ()=>{ mouvementsFilter = {supportId:'', since:'', until:''}; renderTab('mouvements'); };
-    const f = document.getElementById('formMouvement');
-    if(f) f.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(f);
-      const iso = frToIso(fd.get('date'));
-      if(!iso){ alert('Date invalide : utilise le format JJ/MM/AAAA.'); return; }
-      const type = fd.get('type');
-      const obj={supportId:fd.get('supportId'), date:iso, type, montant:Math.abs(Number(fd.get('montant'))),
-        anneeRattachement: type==='interet' ? Number(fd.get('anneeRattachement')) : null,
-        fraisMontant:fd.get('fraisMontant')?Number(fd.get('fraisMontant')):null, fraisPourcent:fd.get('fraisPourcent')?Number(fd.get('fraisPourcent')):null};
-      lastSupportId = obj.supportId;
-      if(editing.mouvement){ Object.assign(state.mouvements.find(m=>m.id===editing.mouvement), obj); editing.mouvement=null; }
-      else state.mouvements.push({id:uid(), ...obj});
-      saveState(); renderAll();
-    };
-    const cancel = document.getElementById('cancelEditMouvement'); if(cancel) cancel.onclick=()=>{editing.mouvement=null; renderTab('mouvements');};
-    document.querySelectorAll('[data-edit-mouvement]').forEach(b=>b.onclick=()=>{editing.mouvement=b.dataset.editMouvement; renderTab('mouvements');});
+    document.querySelectorAll('[data-edit-mouvement]').forEach(b=>b.onclick=()=>openMouvementModal(b.dataset.editMouvement));
     document.querySelectorAll('[data-del-mouvement]').forEach(b=>b.onclick=()=>{ state.mouvements=state.mouvements.filter(m=>m.id!==b.dataset.delMouvement); saveState(); renderAll(); });
   }
 
   if(tab==='actions'){
-    const f = document.getElementById('formAction');
-    if(f) f.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(f);
-      const obj = {supportId:fd.get('supportId'), nom:fd.get('nom'), ticker:(fd.get('ticker')||'').trim()||null,
-        quantite:Number(fd.get('quantite')), pru:Number(fd.get('pru')), coursActuel:Number(fd.get('coursActuel')),
-        coursCible: fd.get('coursCible')?Number(fd.get('coursCible')):null};
-      if(editing.action){ Object.assign(state.actions.find(a=>a.id===editing.action), obj); editing.action=null; }
-      else state.actions.push({id:uid(), ...obj});
-      saveState(); renderAll();
-    };
-    const cancel = document.getElementById('cancelEditAction'); if(cancel) cancel.onclick=()=>{editing.action=null; renderTab('actions');};
-    document.querySelectorAll('[data-edit-action]').forEach(b=>b.onclick=()=>{editing.action=b.dataset.editAction; renderTab('actions');});
+    const openBtn = document.getElementById('openAddActionBtn'); if(openBtn) openBtn.onclick = ()=>openActionModal(null);
+    document.querySelectorAll('[data-edit-action]').forEach(b=>b.onclick=()=>openActionModal(b.dataset.editAction));
     document.querySelectorAll('[data-del-action]').forEach(b=>b.onclick=()=>{ state.actions=state.actions.filter(a=>a.id!==b.dataset.delAction); saveState(); renderAll(); });
+    document.querySelectorAll('[data-refresh-action]').forEach(b=>b.onclick=()=>refreshActionPrice(b.dataset.refreshAction));
+    const refreshAll = document.getElementById('refreshAllActionsBtn'); if(refreshAll) refreshAll.onclick = refreshAllActionPrices;
   }
 
   if(tab==='valorisations'){
-    const f = document.getElementById('formValo');
-    if(f) f.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(f);
-      const isoV = frToIso(fd.get('date'));
-      if(!isoV){ alert('Date invalide : utilise le format JJ/MM/AAAA.'); return; }
-      const obj={supportId:fd.get('supportId'), date:isoV, value:Number(fd.get('value'))};
-      if(editing.valo){ Object.assign(state.valorisations.find(v=>v.id===editing.valo), obj); editing.valo=null; }
-      else state.valorisations.push({id:uid(), ...obj});
-      saveState(); renderAll();
-    };
-    const cancel = document.getElementById('cancelEditValo'); if(cancel) cancel.onclick=()=>{editing.valo=null; renderTab('valorisations');};
-    document.querySelectorAll('[data-edit-valo]').forEach(b=>b.onclick=()=>{editing.valo=b.dataset.editValo; renderTab('valorisations');});
+    const openBtn = document.getElementById('openAddValoBtn'); if(openBtn) openBtn.onclick = ()=>openValoModal(null);
+    document.querySelectorAll('[data-edit-valo]').forEach(b=>b.onclick=()=>openValoModal(b.dataset.editValo));
     document.querySelectorAll('[data-del-valo]').forEach(b=>b.onclick=()=>{ state.valorisations=state.valorisations.filter(v=>v.id!==b.dataset.delValo); saveState(); renderAll(); });
   }
 
   if(tab==='emprunts'){
-    const f = document.getElementById('formEmprunt');
-    if(f) f.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(f);
-      const isoDebut = frToIso(fd.get('dateDebut'));
-      if(!isoDebut){ alert('Date de départ invalide : utilise le format JJ/MM/AAAA.'); return; }
-      const obj={nom:fd.get('nom'), capital:Number(fd.get('capital')), taux:Number(fd.get('taux')), duree:Number(fd.get('duree')), dateDebut:isoDebut, type:fd.get('type'), assuranceType:fd.get('assuranceType'), assuranceValeur: fd.get('assuranceValeur')?Number(fd.get('assuranceValeur')):null, supportId: fd.get('supportId')||null};
-      if(editing.emprunt){ Object.assign(state.emprunts.find(x=>x.id===editing.emprunt), obj); editing.emprunt=null; }
-      else state.emprunts.push({id:uid(), ...obj});
-      saveState(); renderAll();
-    };
-    const cancel = document.getElementById('cancelEditEmprunt'); if(cancel) cancel.onclick=()=>{editing.emprunt=null; renderTab('emprunts');};
-    document.querySelectorAll('[data-edit-emprunt]').forEach(b=>b.onclick=()=>{editing.emprunt=b.dataset.editEmprunt; renderTab('emprunts');});
+    const openBtn = document.getElementById('openAddEmpruntBtn'); if(openBtn) openBtn.onclick = ()=>openEmpruntModal(null);
+    document.querySelectorAll('[data-edit-emprunt]').forEach(b=>b.onclick=()=>openEmpruntModal(b.dataset.editEmprunt));
     document.querySelectorAll('[data-del-emprunt]').forEach(b=>b.onclick=()=>{
       const id=b.dataset.delEmprunt;
       state.emprunts=state.emprunts.filter(x=>x.id!==id);
@@ -2329,14 +2494,16 @@ function attachHandlers(tab){
       state.projection.scenarios = state.projection.scenarios.filter(s=>s.id!==id);
       state.projection.versementsRecurrents.forEach(v=>{ if(v.scenarioId===id) v.scenarioId=null; });
       state.projection.remboursementsSimules.forEach(r=>{ if(r.scenarioId===id) r.scenarioId=null; });
+      if(projectionSelectedScenario===id) projectionSelectedScenario=null;
       saveState(); renderTab('projections');
     });
+    document.querySelectorAll('.scenario-ctx-btn').forEach(b=>b.onclick=()=>{ projectionSelectedScenario = b.dataset.ctx||null; renderTab('projections'); });
     const fvr = document.getElementById('formVR');
     if(fvr) fvr.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(fvr);
       const rawFin=(fd.get('dateFin')||'').trim();
       let isoFin=null;
       if(rawFin){ isoFin=frToIso(rawFin); if(!isoFin){ alert('Date de fin invalide : utilise le format JJ/MM/AAAA.'); return; } }
-      state.projection.versementsRecurrents.push({id:uid(), supportId:fd.get('supportId'), montant:Number(fd.get('montant')), dateFin:isoFin, scenarioId:fd.get('scenarioId')||null});
+      state.projection.versementsRecurrents.push({id:uid(), supportId:fd.get('supportId'), montant:Number(fd.get('montant')), dateFin:isoFin, scenarioId:projectionSelectedScenario});
       saveState(); renderTab('projections');
     };
     document.querySelectorAll('[data-del-vr]').forEach(b=>b.onclick=()=>{ state.projection.versementsRecurrents=state.projection.versementsRecurrents.filter(v=>v.id!==b.dataset.delVr); saveState(); renderTab('projections'); });
@@ -2344,7 +2511,7 @@ function attachHandlers(tab){
     if(frs) frs.onsubmit = e=>{ e.preventDefault(); const fd=new FormData(frs);
       const isoRS = frToIso(fd.get('date'));
       if(!isoRS){ alert('Date invalide : utilise le format JJ/MM/AAAA.'); return; }
-      state.projection.remboursementsSimules.push({id:uid(), empruntId:fd.get('empruntId'), date:isoRS, montant:Number(fd.get('montant')), sourceSupportId:fd.get('sourceSupportId')||null, scenarioId:fd.get('scenarioId')||null});
+      state.projection.remboursementsSimules.push({id:uid(), empruntId:fd.get('empruntId'), date:isoRS, montant:Number(fd.get('montant')), sourceSupportId:fd.get('sourceSupportId')||null, mode:fd.get('mode')||'duree', scenarioId:projectionSelectedScenario});
       saveState(); renderTab('projections');
     };
     document.querySelectorAll('[data-del-rs]').forEach(b=>b.onclick=()=>{ state.projection.remboursementsSimules=state.projection.remboursementsSimules.filter(r=>r.id!==b.dataset.delRs); saveState(); renderTab('projections'); });
@@ -2418,6 +2585,12 @@ window.addEventListener('pagehide', ()=>{ if(drivePushPending) drivePushFlush();
     if(window.google && google.accounts){ clearInterval(waitGoogle); trySilentDriveReconnect(); }
     else if(++tries>25) clearInterval(waitGoogle);
   }, 200);
+  // si la reconnexion silencieuse n'a rien donné après un court délai, on propose le choix explicitement
+  setTimeout(()=>{
+    if(!googleAccessToken && !driveGateSkipped && !(appLock.hasPassword && !masterKey) && document.getElementById('gateScreen').style.display!=='none'){
+      renderGateConnect();
+    }
+  }, 3000);
 })();
 </script>
 </body>
