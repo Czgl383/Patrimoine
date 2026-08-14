@@ -881,6 +881,66 @@ function svgDonut(data, size){
     <div>${legend}</div>
   </div>`;
 }
+function svgBarChart(items, opts){
+  // items: [{label, value, id}] — value en fraction (ex 0.045 pour 4.5%), id optionnel pour un clic (ouvre le détail)
+  opts = opts || {};
+  const width = opts.width||720, height = opts.height||260;
+  const uid = 'bar'+Math.random().toString(36).slice(2,9);
+  const vals = items.map(i=>i.value).filter(v=>v!==null && v!==undefined);
+  let minV = Math.min(0, ...vals), maxV = Math.max(0.02, ...vals);
+  if(minV===maxV){ minV-=0.02; }
+  const gridVals = [0,0.25,0.5,0.75,1].map(f=> minV + f*(maxV-minV));
+  const maxLabelLen = Math.max(...gridVals.map(v=>fmtPct(v).length));
+  const paddingLeft = Math.max(50, 14 + maxLabelLen*6.4);
+  const paddingRight = 16, paddingTop = 16, paddingBottom = 30;
+  const n = items.length;
+  const bandW = (width-paddingLeft-paddingRight)/n;
+  const yFor = v => height-paddingBottom - ((v-minV)/(maxV-minV))*(height-paddingTop-paddingBottom);
+  const zeroY = yFor(0);
+  const gridLines = gridVals.map(v=>{
+    const y = yFor(v);
+    return `<line x1="${paddingLeft}" y1="${y}" x2="${width-paddingRight}" y2="${y}" stroke="#2C333C" stroke-width="1"/><text x="${paddingLeft-8}" y="${y+4}" text-anchor="end" font-size="10" fill="#9AA0A8">${fmtPct(v)}</text>`;
+  }).join('');
+  const barW = Math.min(48, bandW*0.55);
+  const bars = items.map((it,i)=>{
+    const cx = paddingLeft + bandW*(i+0.5);
+    if(it.value===null || it.value===undefined){
+      return `<text x="${cx}" y="${zeroY+4}" text-anchor="middle" font-size="10" fill="#9AA0A8">—</text>`;
+    }
+    const y1 = Math.min(zeroY, yFor(it.value)), y2 = Math.max(zeroY, yFor(it.value));
+    const color = it.value>=0 ? '#4F9C82' : '#B5563C';
+    return `<rect class="${uid}-bar" data-idx="${i}" x="${(cx-barW/2).toFixed(1)}" y="${y1.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(1,y2-y1).toFixed(1)}" fill="${color}" rx="2" style="cursor:${it.id?'pointer':'default'}"/>`;
+  }).join('');
+  const xLabels = items.map((it,i)=>`<text x="${(paddingLeft+bandW*(i+0.5)).toFixed(1)}" y="${height-paddingBottom+16}" text-anchor="middle" font-size="10" fill="#9AA0A8">${it.label}</text>`).join('');
+  const html = `
+    <div style="position:relative">
+      <svg id="${uid}" width="100%" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="display:block">
+        ${gridLines}
+        <line x1="${paddingLeft}" y1="${zeroY}" x2="${width-paddingRight}" y2="${zeroY}" stroke="#9AA0A8" stroke-width="1"/>
+        ${bars}${xLabels}
+      </svg>
+      <div id="${uid}-tip" style="display:none;position:absolute;pointer-events:none;background:#20262E;border:1px solid #2C333C;border-radius:6px;padding:6px 10px;font-size:11px;color:#EDEAE1;white-space:nowrap;transform:translate(-50%,-115%);z-index:5"></div>
+    </div>`;
+  function activate(onBarClick){
+    const svg = document.getElementById(uid);
+    if(!svg) return;
+    const tip = document.getElementById(uid+'-tip');
+    svg.querySelectorAll('.'+uid+'-bar').forEach(rect=>{
+      const idx = Number(rect.dataset.idx);
+      const it = items[idx];
+      rect.addEventListener('mouseenter', ()=>{
+        const rectBox = rect.getBoundingClientRect(), svgBox = svg.getBoundingClientRect();
+        tip.innerHTML = `<div style="color:#9AA0A8">${it.label}</div><div>${fmtPct(it.value)}</div>`;
+        tip.style.display = 'block';
+        tip.style.left = ((rectBox.left+rectBox.width/2-svgBox.left)/svgBox.width*100)+'%';
+        tip.style.top = (rectBox.top-svgBox.top)+'px';
+      });
+      rect.addEventListener('mouseleave', ()=>{ tip.style.display='none'; });
+      if(it.id && onBarClick) rect.addEventListener('click', ()=>onBarClick(it.id, it.label));
+    });
+  }
+  return {html, activate};
+}
 function svgLineChart(seriesList, opts){
   opts = opts || {};
   const width = opts.width||720, height = opts.height||280;
@@ -1409,6 +1469,63 @@ function patrimoineHistory(){
   return points;
 }
 let evolutionChartActivate = null;
+let annualPerfChartActivate = null;
+function computePerformancePivot(){
+  const years = availableYears().slice().sort((a,b)=>b-a);
+  const allIds = state.supports.map(s=>s.id);
+  const rowFor = (label, ids)=>{
+    const values = {};
+    years.forEach(y=>{
+      const isCurrent = y===new Date().getFullYear();
+      values[y] = groupXIRRDetail(ids, `${y}-01-01`, isCurrent?null:`${y}-12-31`).rate;
+    });
+    return {label, values};
+  };
+  const rows = [rowFor('Portefeuille (total)', allIds)];
+  state.supports.forEach(s=> rows.push(rowFor(s.nom, [s.id])));
+  return {years, rows};
+}
+function renderPerfPivotTable(){
+  if(state.supports.length===0) return '<div class="empty">Aucun support.</div>';
+  const {years, rows} = computePerformancePivot();
+  const head = `<tr><th>Support</th>${years.map(y=>`<th>${y}</th>`).join('')}</tr>`;
+  const body = rows.map(r=>`<tr><td class="label-cell">${r.label}</td>${years.map(y=>{
+    const v = r.values[y];
+    return `<td class="${v>0?'pos':v<0?'neg':''}">${v===null?'—':fmtPct(v)}</td>`;
+  }).join('')}</tr>`).join('');
+  return `<div class="table-scroll"><table><thead>${head}</thead><tbody>${body}</tbody></table></div>`;
+}
+function exportPerfPivotCSV(){
+  const {years, rows} = computePerformancePivot();
+  const lines = [['Support', ...years.map(String)].join(';')];
+  rows.forEach(r=>{
+    lines.push([r.label, ...years.map(y=> r.values[y]===null ? '' : (r.values[y]*100).toFixed(2).replace('.',',')+'%')].join(';'));
+  });
+  const blob = new Blob(['\ufeff'+lines.join('\n')], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'performance-annuelle-'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function renderAnnualPerfChart(){
+  if(state.supports.length===0) return '<div class="empty">Aucun support.</div>';
+  const years = availableYears();
+  const allIds = state.supports.map(s=>s.id);
+  const items = years.slice().reverse().map(y=>{
+    const isCurrent = y===new Date().getFullYear();
+    const r = groupXIRRDetail(allIds, `${y}-01-01`, isCurrent?null:`${y}-12-31`).rate;
+    return {label: String(y), value: r, id: String(y)};
+  });
+  if(items.every(it=>it.value===null)) return '<div class="empty">Pas assez de données pour calculer une performance annuelle.</div>';
+  const chart = svgBarChart(items);
+  annualPerfChartActivate = ()=>chart.activate((yearStr)=>{
+    const y = Number(yearStr);
+    const isCurrent = y===new Date().getFullYear();
+    openXIRRDetail(allIds, `${y}-01-01`, isCurrent?null:`${y}-12-31`, `Performance ${y} — Portefeuille`);
+  });
+  return chart.html;
+}
 function renderEvolutionChart(){
   const points = patrimoineHistory();
   if(points.length<2) return "<div class=\"empty\">Ajoute au moins deux mois de données (valorisations, mouvements ou emprunts) pour voir l'évolution.</div>";
@@ -1570,6 +1687,17 @@ function viewDashboard(){
       <div class="ledger-item"><div class="label">Performance ${dashboardYear}</div><div class="value mono" style="font-size:22px">${perfBtn(portAnnuel,'Performance '+dashboardYear+' — Portefeuille')}</div></div>
       <div class="ledger-item"><div class="label">Performance globale</div><div class="value mono" style="font-size:22px">${perfBtn(portGlobal,'Performance globale — Portefeuille')}</div></div>
     </div>
+  </div>
+  <div class="card">
+    <h3>Performance annuelle du portefeuille</h3>
+    <div class="sub">Une barre par année civile — clique une barre pour le détail du calcul</div>
+    ${renderAnnualPerfChart()}
+  </div>
+  <div class="card">
+    <h3>Tableau de vérification — performance par support et par année</h3>
+    <div class="sub">Une ligne par support, une colonne par année — méthode XIRR, pour recouper les calculs</div>
+    <button class="btn secondary" type="button" id="exportPerfPivotBtn" style="margin-bottom:14px">Télécharger en CSV</button>
+    ${renderPerfPivotTable()}
   </div>
   <div class="card">
     <h3>Évolution du patrimoine net</h3>
@@ -2109,6 +2237,18 @@ function viewProjections(){
     <h3>Patrimoine net projeté</h3>
     <div class="sub">Scénario de base (trait plein) vs chaque scénario défini (pointillés, une couleur par scénario)</div>
     ${renderProjectionChart()}
+  </div>
+  <div class="card">
+    <h3>Tableau de vérification — projection année par année</h3>
+    <div class="sub">Détail par support et par emprunt, pour recouper les calculs du graphique ci-dessus</div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:end;margin-bottom:14px">
+      <div class="field"><label>Scénario</label><select id="pivotScenarioSel">
+        <option value="" ${!projectionPivotScenario?'selected':''}>Base (commun uniquement)</option>
+        ${(state.projection.scenarios||[]).map(sc=>`<option value="${sc.id}" ${projectionPivotScenario===sc.id?'selected':''}>${sc.nom}</option>`).join('')}
+      </select></div>
+      <button class="btn secondary" type="button" id="exportProjectionPivotBtn">Télécharger en CSV</button>
+    </div>
+    ${renderProjectionPivotTable()}
   </div>`;
 }
 
@@ -2123,6 +2263,7 @@ function projectPatrimoine(scenarioId){
   let loanCap = {}, curMensualite = {};
   state.emprunts.forEach(e=>{ loanCap[e.id]=loanRemainingToday(e); curMensualite[e.id]=loanCurrentMensualite(e); });
   const points = [];
+  const yearlySnapshots = [];
   let totalInterets = 0, totalAssurance = 0;
   for(let m=0;m<=months;m++){
     const date = new Date(today); date.setMonth(date.getMonth()+m);
@@ -2170,10 +2311,44 @@ function projectPatrimoine(scenarioId){
     const assets = Object.values(supVals).reduce((a,b)=>a+b,0);
     const debts = Object.values(loanCap).reduce((a,b)=>a+b,0);
     points.push({date: iso, net: assets-debts});
+    if(m%12===0) yearlySnapshots.push({yearIndex: m/12, supVals: Object.assign({}, supVals), loanCap: Object.assign({}, loanCap)});
   }
-  return {points, totalInterets, totalAssurance};
+  return {points, totalInterets, totalAssurance, yearlySnapshots};
 }
 let projectionChartActivate = null;
+let projectionPivotScenario = null;
+function computeProjectionPivot(scenarioId){
+  const proj = projectPatrimoine(scenarioId);
+  const thisYear = new Date().getFullYear();
+  const years = proj.yearlySnapshots.map(s=>thisYear+s.yearIndex);
+  const rows = [];
+  rows.push({label:'Patrimoine net (total)', values: proj.yearlySnapshots.map(s=>{
+    const assets = Object.values(s.supVals).reduce((a,b)=>a+b,0);
+    const debts = Object.values(s.loanCap).reduce((a,b)=>a+b,0);
+    return assets-debts;
+  })});
+  state.supports.forEach(sp=> rows.push({label: sp.nom, values: proj.yearlySnapshots.map(s=> s.supVals[sp.id])}));
+  state.emprunts.forEach(e=> rows.push({label: e.nom+' (restant dû)', values: proj.yearlySnapshots.map(s=> s.loanCap[e.id])}));
+  return {years, rows};
+}
+function renderProjectionPivotTable(){
+  if(state.supports.length===0 && state.emprunts.length===0) return '<div class="empty">Aucune donnée à projeter.</div>';
+  const {years, rows} = computeProjectionPivot(projectionPivotScenario);
+  const head = `<tr><th>Élément</th>${years.map(y=>`<th>${y}</th>`).join('')}</tr>`;
+  const body = rows.map(r=>`<tr><td class="label-cell">${r.label}</td>${r.values.map(v=>`<td>${v===undefined?'—':fmtEUR(v)}</td>`).join('')}</tr>`).join('');
+  return `<div class="table-scroll"><table><thead>${head}</thead><tbody>${body}</tbody></table></div>`;
+}
+function exportProjectionPivotCSV(){
+  const {years, rows} = computeProjectionPivot(projectionPivotScenario);
+  const lines = [['Élément', ...years.map(String)].join(';')];
+  rows.forEach(r=> lines.push([r.label, ...r.values.map(v=> v===undefined?'':Math.round(v))].join(';')));
+  const blob = new Blob(['\ufeff'+lines.join('\n')], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'projection-'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 function renderProjectionChart(){
   if(state.supports.length===0 && state.emprunts.length===0) return '<div class="empty">Ajoute des supports ou des emprunts pour voir la projection.</div>';
   const sample = pts => pts.filter((_,i)=>i%3===0).map(p=>({y:Math.round(p.net), label:p.date.slice(0,7)}));
@@ -2338,6 +2513,8 @@ function attachHandlers(tab){
 
   if(tab==='dashboard'){
     if(evolutionChartActivate) evolutionChartActivate();
+    if(annualPerfChartActivate) annualPerfChartActivate();
+    const exportPivot = document.getElementById('exportPerfPivotBtn'); if(exportPivot) exportPivot.onclick = exportPerfPivotCSV;
     document.querySelectorAll('.perf-link').forEach(b=>b.onclick=()=>{
       openXIRRDetail(b.dataset.ids.split(','), b.dataset.since||null, b.dataset.until||null, b.dataset.title);
     });
@@ -2476,6 +2653,8 @@ function attachHandlers(tab){
 
   if(tab==='projections'){
     if(projectionChartActivate) projectionChartActivate();
+    const pivotSel = document.getElementById('pivotScenarioSel'); if(pivotSel) pivotSel.onchange = ()=>{ projectionPivotScenario = pivotSel.value||null; renderTab('projections'); };
+    const exportPivot = document.getElementById('exportProjectionPivotBtn'); if(exportPivot) exportPivot.onclick = exportProjectionPivotCSV;
     document.querySelectorAll('[data-hyp]').forEach(inp=>inp.onchange=()=>{ state.projection.hypotheses[inp.dataset.hyp]=Number(inp.value); saveState(); renderTab('projections'); });
     const hz = document.getElementById('horizonInput'); if(hz) hz.onchange=()=>{ state.projection.horizonAnnees=Number(hz.value); saveState(); renderTab('projections'); };
     const fsc = document.getElementById('formScenario');
