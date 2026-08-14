@@ -67,6 +67,9 @@ nav.tabs button.active{color:var(--text);border-bottom-color:var(--gold);}
 .drag-handle{cursor:grab;color:var(--text-dim);}
 .drag-handle:active{cursor:grabbing;}
 tr.dragging{opacity:.4;}
+.csv-dup-row{opacity:.5;}
+.csv-dup-row td{text-decoration:line-through;}
+.csv-dup-row .pill,.csv-dup-row select,.csv-dup-row input{text-decoration:none;}
 .scenario-ctx-bar{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;}
 .scenario-ctx-btn{background:var(--panel-2);border:1px solid var(--line);color:var(--text-dim);border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;}
 .scenario-ctx-btn.active{background:var(--ink);color:var(--gold);border-color:var(--gold);font-weight:600;}
@@ -1132,10 +1135,15 @@ function closeModal(){ document.getElementById('modalOverlay').style.display = '
 function escCloseModal(e){ if(e.key==='Escape') closeModal(); }
 
 // ---------- IMPORT CSV PARAMÉTRABLE ----------
-function parseCSV(text){
-  const firstLine = text.split(/\r?\n/)[0]||'';
-  const delim = (firstLine.split(';').length > firstLine.split(',').length) ? ';' : ',';
+function parseCSV(text, forceDelim){
   const lines = text.split(/\r?\n/).filter(l=>l.trim().length>0);
+  let delim = forceDelim;
+  if(!delim || delim==='auto'){
+    // détection sur plusieurs lignes (pas seulement la première, qui peut être un titre/séparateur sans virgule ni point-virgule)
+    const sample = lines.slice(0, Math.min(6, lines.length));
+    const scoreFor = d => sample.reduce((s,l)=> s + l.split(d).length, 0);
+    delim = scoreFor(';') >= scoreFor(',') ? ';' : ',';
+  }
   const allRows = lines.map(l=> l.split(delim).map(c=>c.trim().replace(/^"|"$/g,'')));
   return {delim, allRows};
 }
@@ -1161,7 +1169,8 @@ function csvParseAmount(raw){
 }
 let csvImportData = null;
 let csvPendingImport = null;
-function openCsvImportModal(){
+let csvRawText = null;
+function openCsvImportModal(presetEntity){
   if(state.supports.length===0){ alert("Ajoute d'abord au moins un support avant d'importer un fichier."); return; }
   showModal(`
     <h3>Importer un fichier CSV</h3>
@@ -1174,7 +1183,7 @@ function openCsvImportModal(){
   document.getElementById('csvFileInput').onchange = e=>{
     const file = e.target.files[0]; if(!file) return;
     const reader = new FileReader();
-    reader.onload = ()=>{ csvImportData = parseCSV(reader.result); renderCsvMapping(); };
+    reader.onload = ()=>{ csvRawText = reader.result; csvImportData = parseCSV(csvRawText); renderCsvMapping(presetEntity); };
     reader.readAsText(file, 'UTF-8');
   };
 }
@@ -1186,24 +1195,35 @@ function currentCsvColumns(){
   const ncols = (allRows[0]||[]).length;
   return {headers: Array.from({length:ncols}, (_,i)=>'Colonne '+(i+1)), rows: allRows};
 }
-function renderCsvMapping(){
+function renderCsvMapping(presetEntity){
   if((csvImportData.allRows||[]).length===0){ document.getElementById('csvMappingArea').innerHTML = '<div class="empty">Fichier vide ou illisible.</div>'; return; }
   document.getElementById('csvMappingArea').innerHTML = `
-    <div class="sub" style="margin-top:14px">${csvImportData.allRows.length} ligne(s) détectée(s) dans le fichier.</div>
-    <label style="display:flex;align-items:center;gap:6px;font-size:12px;margin-top:10px;text-transform:none;letter-spacing:0"><input type="checkbox" id="csvHasHeader" checked> La première ligne contient les intitulés de colonnes (sinon l'import démarre dès la 1ʳᵉ ligne)</label>
+    <div class="sub" style="margin-top:14px">${csvImportData.allRows.length} ligne(s) détectée(s) dans le fichier (séparateur détecté : "${csvImportData.delim}").</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:10px">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;text-transform:none;letter-spacing:0"><input type="checkbox" id="csvHasHeader" checked> La 1ʳᵉ ligne contient les intitulés</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;text-transform:none;letter-spacing:0">Séparateur :
+        <select id="csvDelimSel" style="width:auto">
+          <option value="auto">Auto</option>
+          <option value=";" ${csvImportData.delim===';'?'selected':''}>Point-virgule (;)</option>
+          <option value="," ${csvImportData.delim===','?'selected':''}>Virgule (,)</option>
+        </select>
+      </label>
+    </div>
     <div id="csvColumnsArea"></div>`;
   document.getElementById('csvHasHeader').onchange = renderCsvColumns;
-  renderCsvColumns();
+  document.getElementById('csvDelimSel').onchange = e=>{ csvImportData = parseCSV(csvRawText, e.target.value); renderCsvMapping(presetEntity); };
+  renderCsvColumns(presetEntity);
 }
-function renderCsvColumns(){
+function renderCsvColumns(presetEntity){
   const {headers, rows} = currentCsvColumns();
+  if(rows.length===0){ document.getElementById('csvColumnsArea').innerHTML = '<div class="empty">Aucune ligne de données détectée avec ces réglages — vérifie la case "1ʳᵉ ligne = intitulés" ou le séparateur.</div>'; return; }
   const colOpts = sel=>headers.map((h,i)=>`<option value="${i}" ${i===sel?'selected':''}>${h||'(colonne '+(i+1)+')'}</option>`).join('');
   const guessDate = guessColumn(headers, ['date']);
   const guessMontant = guessColumn(headers, ['montant','amount','valeur','value','solde']);
   document.getElementById('csvColumnsArea').innerHTML = `
     <div class="sub" style="margin-top:10px">${rows.length} ligne(s) de données. Choisis la destination et fais correspondre les colonnes.</div>
     <form class="inline-form" id="csvMapForm" style="margin-top:10px">
-      <div class="field"><label>Destination</label><select name="entity" id="csvEntity"><option value="mouvements">Mouvements</option><option value="valorisations">Valorisations</option></select></div>
+      <div class="field"><label>Destination</label><select name="entity" id="csvEntity" ${presetEntity?'disabled':''}><option value="mouvements" ${presetEntity==='mouvements'?'selected':''}>Mouvements</option><option value="valorisations" ${presetEntity==='valorisations'?'selected':''}>Valorisations</option></select></div>
       <div class="field"><label>Support cible</label><select name="supportId">${state.supports.map(s=>`<option value="${s.id}">${s.nom}</option>`).join('')}</select></div>
       <div class="field"><label>Colonne Date</label><select name="colDate">${colOpts(guessDate)}</select></div>
       <div class="field"><label>Format de date</label><select name="dateFormat"><option value="fr">JJ/MM/AAAA</option><option value="iso">AAAA-MM-JJ</option></select></div>
@@ -1221,6 +1241,12 @@ function renderCsvColumns(){
   updateVisibility();
   document.getElementById('csvMapForm').onsubmit = e=>{ e.preventDefault(); showCsvPreview(); };
 }
+function isDuplicateMouvement(p, supportId){
+  return state.mouvements.some(m=> m.supportId===supportId && m.date===p.date && m.type===p.type && Math.abs(m.montant-p.montant)<0.01);
+}
+function isDuplicateValo(p, supportId){
+  return state.valorisations.some(v=> v.supportId===supportId && v.date===p.date && Math.abs(v.value-p.value)<0.01);
+}
 function showCsvPreview(){
   const form = document.getElementById('csvMapForm');
   const fd = new FormData(form);
@@ -1235,26 +1261,54 @@ function showCsvPreview(){
     if(entity==='mouvements'){
       let type = amt<0 ? 'retrait' : 'versement';
       if(colType!==''){ const tv=(r[Number(colType)]||'').toLowerCase(); type = tv.includes('retrait')||tv.includes('debit')||tv.includes('sortie') ? 'retrait' : (tv.includes('interet')||tv.includes('interest') ? 'interet' : 'versement'); }
-      parsed.push({date:iso, type, montant:Math.abs(amt)});
-    } else parsed.push({date:iso, value:amt});
+      const p = {date:iso, type, montant:Math.abs(amt), anneeRattachement: Number(iso.slice(0,4))};
+      p.duplicate = isDuplicateMouvement(p, supportId);
+      parsed.push(p);
+    } else {
+      const p = {date:iso, value:amt};
+      p.duplicate = isDuplicateValo(p, supportId);
+      parsed.push(p);
+    }
   });
-  csvPendingImport = {entity, supportId, parsed};
-  const previewRows = parsed.slice(0,8).map(p=> entity==='mouvements'
-    ? `<tr><td>${fmtDate(p.date)}</td><td class="label-cell">${p.type}</td><td>${fmtEUR(p.montant)}</td></tr>`
-    : `<tr><td>${fmtDate(p.date)}</td><td>${fmtEUR(p.value)}</td></tr>`).join('');
+  csvPendingImport = {entity, supportId, parsed, skipped};
+  renderCsvPreviewTable();
+}
+function renderCsvPreviewTable(){
+  const { entity, parsed, skipped } = csvPendingImport;
+  const dupCount = parsed.filter(p=>p.duplicate).length;
+  const rowsHTML = parsed.map((p,i)=> entity==='mouvements' ? `<tr class="${p.duplicate?'csv-dup-row':''}">
+      <td>${fmtDate(p.date)}</td>
+      <td><select class="csv-row-type" data-idx="${i}">
+        <option value="versement" ${p.type==='versement'?'selected':''}>Versement</option>
+        <option value="retrait" ${p.type==='retrait'?'selected':''}>Retrait</option>
+        <option value="interet" ${p.type==='interet'?'selected':''}>Intérêts perçus</option>
+      </select></td>
+      <td>${fmtEUR(p.montant)}</td>
+      <td>${p.type==='interet'? `<input type="number" inputmode="numeric" class="csv-row-annee" data-idx="${i}" value="${p.anneeRattachement}" style="width:75px">` : '—'}</td>
+      <td>${p.duplicate? '<span class="pill">doublon détecté</span>' : ''}</td>
+    </tr>` : `<tr class="${p.duplicate?'csv-dup-row':''}"><td>${fmtDate(p.date)}</td><td>${fmtEUR(p.value)}</td><td>${p.duplicate? '<span class="pill">doublon détecté</span>' : ''}</td></tr>`
+  ).join('');
+  const toImport = parsed.filter(p=>!p.duplicate).length;
   document.getElementById('csvPreview').innerHTML = `
-    <div class="sub" style="margin-top:14px">${parsed.length} ligne(s) valide(s)${skipped?`, ${skipped} ignorée(s) (date ou montant illisible)`:''}. Aperçu (8 premières) :</div>
-    ${parsed.length? `<table><thead><tr>${entity==='mouvements'?'<th>Date</th><th>Type</th><th>Montant</th>':'<th>Date</th><th>Valeur</th>'}</tr></thead><tbody>${previewRows}</tbody></table>
-    <button class="btn" type="button" id="csvConfirmBtn" style="margin-top:12px">Importer ${parsed.length} ligne(s)</button>` : '<div class="empty">Aucune ligne valide avec ce mappage — vérifie les colonnes choisies.</div>'}`;
+    <div class="sub" style="margin-top:14px">${parsed.length} ligne(s) reconnue(s)${skipped?`, ${skipped} ignorée(s) (date ou montant illisible)`:''}${dupCount?`, ${dupCount} doublon(s) détecté(s) (déjà présents, exclus par défaut)`:''}. ${entity==='mouvements'?"Ajuste le type et l'année de rattachement des intérêts si besoin :":'Aperçu :'}</div>
+    ${parsed.length? `<div class="table-scroll" style="max-height:320px;overflow-y:auto"><table><thead><tr>${entity==='mouvements'?'<th>Date</th><th>Type</th><th>Montant</th><th>Année rattach.</th><th></th>':'<th>Date</th><th>Valeur</th><th></th>'}</tr></thead><tbody>${rowsHTML}</tbody></table></div>
+    <button class="btn" type="button" id="csvConfirmBtn" style="margin-top:12px">Importer ${toImport} ligne(s)${dupCount?` (${dupCount} doublon(s) ignoré(s))`:''}</button>` : '<div class="empty">Aucune ligne valide avec ce mappage — vérifie les colonnes choisies.</div>'}`;
+  document.querySelectorAll('.csv-row-type').forEach(sel=>{
+    sel.onchange = ()=>{ const i=Number(sel.dataset.idx); csvPendingImport.parsed[i].type = sel.value; if(sel.value==='interet' && !csvPendingImport.parsed[i].anneeRattachement) csvPendingImport.parsed[i].anneeRattachement = Number(csvPendingImport.parsed[i].date.slice(0,4)); renderCsvPreviewTable(); };
+  });
+  document.querySelectorAll('.csv-row-annee').forEach(inp=>{
+    inp.onchange = ()=>{ csvPendingImport.parsed[Number(inp.dataset.idx)].anneeRattachement = Number(inp.value); };
+  });
   const cb = document.getElementById('csvConfirmBtn'); if(cb) cb.onclick = confirmCsvImport;
 }
 function confirmCsvImport(){
   const {entity, supportId, parsed} = csvPendingImport;
+  const toImport = parsed.filter(p=>!p.duplicate);
   if(entity==='mouvements'){
-    parsed.forEach(p=> state.mouvements.push({id:uid(), supportId, date:p.date, type:p.type, montant:p.montant, anneeRattachement: p.type==='interet'?Number(p.date.slice(0,4)):null, fraisMontant:null, fraisPourcent:null}));
+    toImport.forEach(p=> state.mouvements.push({id:uid(), supportId, date:p.date, type:p.type, montant:p.montant, anneeRattachement: p.type==='interet'?p.anneeRattachement:null, fraisMontant:null, fraisPourcent:null}));
     lastSupportId = supportId;
   } else {
-    parsed.forEach(p=> state.valorisations.push({id:uid(), supportId, date:p.date, value:p.value}));
+    toImport.forEach(p=> state.valorisations.push({id:uid(), supportId, date:p.date, value:p.value}));
   }
   saveState();
   closeModal();
@@ -1796,6 +1850,7 @@ function supportFormHTML(id){
   const e = id ? state.supports.find(s=>s.id===id) : null;
   return `
     <h3>${e?'Modifier le support':'Ajouter un support'}</h3>
+    <div class="helptext">Le plafond de versement (si renseigné) ne compte que les versements nets — comme le Livret A, les intérêts capitalisés peuvent faire dépasser ce plafond sans que ce soit un problème.</div>
     <form class="inline-form" id="formSupport">
       <div class="field"><label>Nom</label><input name="nom" required value="${e?e.nom:''}"></div>
       <div class="field"><label>Type</label><select name="type">${state.types.map(t=>`<option ${e&&e.type===t?'selected':''}>${t}</option>`).join('')}</select></div>
@@ -1816,6 +1871,7 @@ function supportFormHTML(id){
         </div>
       </div>
       <div class="field"><label>Délai jouissance (mois, SCPI)</label><input name="delaiJouissance" type="number" inputmode="numeric" min="0" value="${e?(e.delaiJouissance||0):0}"></div>
+      <div class="field"><label>Plafond de versement (€, optionnel)</label><input name="plafondVersement" type="number" inputmode="numeric" min="0" value="${e&&e.plafondVersement?e.plafondVersement:''}"></div>
       <button class="btn" type="submit">${e?'Enregistrer':'Ajouter'}</button>
       <button class="btn secondary" type="button" id="cancelSupportModal">Annuler</button>
     </form>`;
@@ -1839,7 +1895,7 @@ function openSupportModal(id){
       dispoDureeValeur = fd.get('dispoDureeValeur') ? Number(fd.get('dispoDureeValeur')) : null;
       dispoDureeUnite = fd.get('dispoDureeUnite')||'annees';
     }
-    const obj = {nom:fd.get('nom'), type:fd.get('type'), disponibilite:fd.get('disponibilite'), dispoMode, dateDisponibilite, dispoDureeValeur, dispoDureeUnite, delaiJouissance:Number(fd.get('delaiJouissance')||0)};
+    const obj = {nom:fd.get('nom'), type:fd.get('type'), disponibilite:fd.get('disponibilite'), dispoMode, dateDisponibilite, dispoDureeValeur, dispoDureeUnite, delaiJouissance:Number(fd.get('delaiJouissance')||0), plafondVersement: fd.get('plafondVersement')?Number(fd.get('plafondVersement')):null};
     if(id){ Object.assign(state.supports.find(s=>s.id===id), obj); }
     else state.supports.push({id:uid(), tauxAnnonces:{}, ...obj});
     saveState(); closeModal(); renderTab('supports');
@@ -1851,6 +1907,7 @@ function viewSupports(){
     <td class="label-cell">${s.nom}</td><td class="label-cell">${s.type}</td><td class="label-cell">${s.disponibilite}</td>
     <td>${effectiveDispoDate(s)? fmtDate(effectiveDispoDate(s)) : (s.dispoMode==='immediat'||!s.dispoMode?'Immédiat':'—')}</td>
     <td>${s.delaiJouissance||0} mois</td>
+    <td>${s.plafondVersement? `${fmtEUR(netVersementsSupport(s.id))} / ${fmtEUR(s.plafondVersement)}` : '—'}</td>
     <td style="white-space:nowrap">${editBtn('edit-support', s.id)}${delBtn('del-support', s.id)}</td>
   </tr>`).join('');
   const typeRows = state.types.map((t,i)=>`<tr data-drag-id="${i}">
@@ -1877,7 +1934,7 @@ function viewSupports(){
     <button class="btn" type="button" id="openAddSupportBtn">+ Ajouter un support</button>
   </div>
   <div class="card" style="margin-top:-14px">
-    ${state.supports.length? `<table id="supportsTable"><thead><tr><th></th><th>Nom</th><th>Type</th><th>Disponibilité</th><th>Disponible le</th><th>Délai jouissance</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">Aucun support pour le moment. Glisse la poignée pour réordonner.</div>'}
+    ${state.supports.length? `<table id="supportsTable"><thead><tr><th></th><th>Nom</th><th>Type</th><th>Disponibilité</th><th>Disponible le</th><th>Délai jouissance</th><th>Plafond versé</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="empty">Aucun support pour le moment. Glisse la poignée pour réordonner.</div>'}
   </div>
   <div class="card">
     <h3>Types de support</h3>
@@ -1936,6 +1993,10 @@ function mouvementFormHTML(id){
       <button class="btn secondary" type="button" id="cancelMouvementModal">Annuler</button>
     </form>`;
 }
+function netVersementsSupport(supportId, excludeMouvementId){
+  return state.mouvements.filter(m=>m.supportId===supportId && m.id!==excludeMouvementId)
+    .reduce((s,m)=> s + (m.type==='versement'?m.montant : m.type==='retrait'?-m.montant : 0), 0);
+}
 function openMouvementModal(id){
   showModal(mouvementFormHTML(id));
   const typeSel = document.getElementById('mvtType');
@@ -1946,7 +2007,18 @@ function openMouvementModal(id){
     const iso = frToIso(fd.get('date'));
     if(!iso){ alert('Date invalide : utilise le format JJ/MM/AAAA.'); return; }
     const type = fd.get('type');
-    const obj = {supportId:fd.get('supportId'), date:iso, type, montant:Math.abs(Number(fd.get('montant'))),
+    const montant = Math.abs(Number(fd.get('montant')));
+    if(type==='versement'){
+      const sup = state.supports.find(s=>s.id===fd.get('supportId'));
+      if(sup && sup.plafondVersement){
+        const netAvant = netVersementsSupport(sup.id, id);
+        if(netAvant + montant > sup.plafondVersement){
+          const ok = confirm(`Ce versement porterait le net versé sur "${sup.nom}" à ${fmtEUR(netAvant+montant)}, au-delà du plafond de ${fmtEUR(sup.plafondVersement)}. Continuer quand même ?`);
+          if(!ok) return;
+        }
+      }
+    }
+    const obj = {supportId:fd.get('supportId'), date:iso, type, montant,
       anneeRattachement: type==='interet' ? Number(fd.get('anneeRattachement')) : null,
       fraisMontant:fd.get('fraisMontant')?Number(fd.get('fraisMontant')):null, fraisPourcent:fd.get('fraisPourcent')?Number(fd.get('fraisPourcent')):null};
     lastSupportId = obj.supportId;
@@ -1984,9 +2056,12 @@ function viewMouvements(){
   }).join('');
   if(state.supports.length===0) return `<div class="card"><div class="empty">Ajoute d'abord un support.</div></div>`;
   return `
-  <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+  <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
     <h3 style="margin:0">Historique des mouvements</h3>
-    <button class="btn" type="button" id="openAddMouvementBtn">+ Ajouter un mouvement</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn secondary" type="button" id="openImportCsvMvtBtn">Importer un CSV</button>
+      <button class="btn" type="button" id="openAddMouvementBtn">+ Ajouter un mouvement</button>
+    </div>
   </div>
   <div class="card" style="margin-top:-14px">
     <div class="filter-bar">
@@ -2703,6 +2778,7 @@ function attachHandlers(tab){
 
   if(tab==='mouvements'){
     const openBtn = document.getElementById('openAddMouvementBtn'); if(openBtn) openBtn.onclick = ()=>openMouvementModal(null);
+    const openCsvBtn = document.getElementById('openImportCsvMvtBtn'); if(openCsvBtn) openCsvBtn.onclick = ()=>openCsvImportModal('mouvements');
     const fSup = document.getElementById('mvtFilterSupport');
     if(fSup) fSup.onchange = ()=>{ mouvementsFilter.supportId = fSup.value; renderTab('mouvements'); };
     const fSince = document.getElementById('mvtFilterSince');
